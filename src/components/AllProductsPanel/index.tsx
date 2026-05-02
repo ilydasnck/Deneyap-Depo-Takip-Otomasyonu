@@ -1,0 +1,174 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Filter, X } from 'lucide-react';
+import type { InventoryItem, SortOption, StockFilter } from '@/types/inventory';
+import { countByStockLevel } from '@/lib/stockHelpers';
+import { filterByStock, filterByText, sortItems } from '@/lib/sortAndFilter';
+import StockBadge from '@/components/StockBadge';
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  items: InventoryItem[];
+};
+
+const stockFilterLabels: Record<StockFilter, string> = {
+  all: 'Tümü',
+  in_stock: 'Stokta',
+  low: 'Düşük',
+  out: 'Tükendi',
+};
+
+const sortLabels: Record<SortOption, string> = {
+  name_asc: 'İsim (A-Z)',
+  name_desc: 'İsim (Z-A)',
+  shelf_asc: 'Raf No (Küçük → Büyük)',
+  shelf_desc: 'Raf No (Büyük → Küçük)',
+  qty_asc: 'Adet (Az → Çok)',
+  qty_desc: 'Adet (Çok → Az)',
+};
+
+export default function AllProductsPanel({ open, onClose, items }: Props) {
+  const [q, setQ] = useState('');
+  const [stock, setStock] = useState<StockFilter>('all');
+  const [sort, setSort] = useState<SortOption>('name_asc');
+
+  const processed = useMemo(() => {
+    let list = filterByText(items, q);
+    list = filterByStock(list, stock);
+    list = sortItems(list, sort);
+    return list;
+  }, [items, q, stock, sort]);
+
+  const counts = useMemo(() => countByStockLevel(processed), [processed]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:items-center sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="all-products-title"
+    >
+      <button
+        type="button"
+        className="fixed inset-0 cursor-default bg-transparent"
+        aria-label="Paneli kapat"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-6xl rounded-2xl border border-zinc-200/80 bg-white/95 p-5 shadow-2xl dark:border-slate-600 dark:bg-slate-900/95 sm:p-6 lg:max-w-7xl 2xl:max-w-[min(100%,92rem)]">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <Filter className="h-5 w-5" aria-hidden />
+              <h2 id="all-products-title" className="text-lg font-bold sm:text-xl">
+                Tüm Ürünler
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-slate-400">
+              {processed.length} ürün listeleniyor · Stokta: {counts.inStock} · Düşük:{' '}
+              {counts.low} · Tükendi: {counts.out}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            aria-label="Kapat"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+            Ara
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Ürün adı veya raf no..."
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+            Stok Durumu
+            <select
+              value={stock}
+              onChange={(e) => setStock(e.target.value as StockFilter)}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+            >
+              {(Object.keys(stockFilterLabels) as StockFilter[]).map((k) => (
+                <option key={k} value={k}>
+                  {stockFilterLabels[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+            Sırala
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+            >
+              {(Object.keys(sortLabels) as SortOption[]).map((k) => (
+                <option key={k} value={k}>
+                  {sortLabels[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <ul className="max-h-[min(60vh,520px)] space-y-2 overflow-y-auto pr-1 scroll-area-themed">
+          {processed.map((it) => (
+            <li
+              key={it.id}
+              className="flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex min-w-0 flex-1 gap-3">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
+                  {it.imageUrl ? (
+                    <img
+                      src={it.imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
+                      —
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{it.productName}</p>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-base font-medium text-zinc-700 dark:text-slate-300">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span aria-hidden>📍</span>
+                      Raf #{it.shelfId}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <StockBadge quantity={it.quantity} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
