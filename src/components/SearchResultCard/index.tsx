@@ -1,11 +1,23 @@
 import { MapPin } from 'lucide-react';
 import type { InventoryItem } from '@/types/inventory';
 
-type Props = { item: InventoryItem };
+type Props = {
+  item: InventoryItem;
+  onSelect: () => void;
+};
 
-export default function SearchResultCard({ item }: Props) {
+export default function SearchResultCard({ item, onSelect }: Props) {
   return (
-    <article className="rounded-xl bg-white p-4 shadow-md ring-1 ring-zinc-100 dark:bg-slate-900 dark:shadow-lg dark:ring-slate-700 sm:p-5">
+    <button
+      type="button"
+      onClick={onSelect}
+      className={[
+        'w-full rounded-xl bg-white p-4 text-left shadow-md ring-1 ring-zinc-100',
+        'transition hover:ring-2 hover:ring-[#B71C1C]/25 focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#B71C1C]/40',
+        'dark:bg-slate-900 dark:shadow-lg dark:ring-slate-700 dark:hover:ring-[#B71C1C]/35',
+        'sm:p-5',
+      ].join(' ')}
+    >
       <div className="flex gap-4">
         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-zinc-200 dark:bg-slate-800 dark:ring-slate-600">
           {item.imageUrl ? (
@@ -38,6 +50,6 @@ export default function SearchResultCard({ item }: Props) {
           </div>
         </div>
       </div>
-    </article>
+    </button>
   );
 }

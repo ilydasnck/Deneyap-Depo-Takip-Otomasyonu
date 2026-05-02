@@ -4,6 +4,7 @@ import { Search, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import Layout from '@/components/Layout';
 import AllProductsPanel from '@/components/AllProductsPanel';
+import ProductDetailModal from '@/components/ProductDetailModal';
 import SearchResultCard from '@/components/SearchResultCard';
 import StockBadge from '@/components/StockBadge';
 import { useInventory } from '@/context/InventoryContext';
@@ -27,6 +28,7 @@ export default function HomePage() {
   const { items, loading, error } = useInventory();
   const [search, setSearch] = useState('');
   const [allOpen, setAllOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [recent, setRecent] = useState<string[]>(() => loadRecentSearches());
 
   const filtered = useMemo(() => {
@@ -109,7 +111,9 @@ export default function HomePage() {
               <Search className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2} />
             </span>
             <input
-              type="search"
+              type="text"
+              role="searchbox"
+              enterKeyHint="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={onSearchKeyDown}
@@ -181,7 +185,7 @@ export default function HomePage() {
           <ul className="flex w-full flex-col gap-4">
             {searchSorted.map((it) => (
               <li key={it.id}>
-                <SearchResultCard item={it} />
+                <SearchResultCard item={it} onSelect={() => setDetailItem(it)} />
               </li>
             ))}
           </ul>
@@ -204,25 +208,32 @@ export default function HomePage() {
               </div>
               <ul className="space-y-3">
                 {list.map((it) => (
-                  <li
-                    key={it.id}
-                    className="flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50"
-                  >
-                    <div className="flex min-w-0 flex-1 gap-3">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
-                        {it.imageUrl ? (
-                          <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[10px] text-zinc-400">
-                            görsel yok
-                          </div>
-                        )}
+                  <li key={it.id}>
+                    <button
+                      type="button"
+                      onClick={() => setDetailItem(it)}
+                      className={[
+                        'flex w-full flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-left',
+                        'transition hover:border-zinc-200 hover:bg-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#B71C1C]/35',
+                        'sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600 dark:hover:bg-slate-800',
+                      ].join(' ')}
+                    >
+                      <div className="flex min-w-0 flex-1 gap-3">
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
+                          {it.imageUrl ? (
+                            <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] text-zinc-400">
+                              görsel yok
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{it.productName}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{it.productName}</p>
-                      </div>
-                    </div>
-                    <StockBadge quantity={it.quantity} />
+                      <StockBadge quantity={it.quantity} />
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -237,7 +248,18 @@ export default function HomePage() {
         </p>
       ) : null}
 
-      <AllProductsPanel open={allOpen} onClose={() => setAllOpen(false)} items={items} />
+      <AllProductsPanel
+        open={allOpen}
+        onClose={() => setAllOpen(false)}
+        items={items}
+        onProductSelect={(it: InventoryItem) => setDetailItem(it)}
+      />
+
+      <ProductDetailModal
+        open={detailItem !== null}
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+      />
     </Layout>
   );
 }

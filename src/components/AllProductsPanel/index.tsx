@@ -9,6 +9,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   items: InventoryItem[];
+  onProductSelect?: (item: InventoryItem) => void;
 };
 
 const stockFilterLabels: Record<StockFilter, string> = {
@@ -27,7 +28,12 @@ const sortLabels: Record<SortOption, string> = {
   qty_desc: 'Adet (Çok → Az)',
 };
 
-export default function AllProductsPanel({ open, onClose, items }: Props) {
+export default function AllProductsPanel({
+  open,
+  onClose,
+  items,
+  onProductSelect,
+}: Props) {
   const [q, setQ] = useState('');
   const [stock, setStock] = useState<StockFilter>('all');
   const [sort, setSort] = useState<SortOption>('name_asc');
@@ -135,38 +141,56 @@ export default function AllProductsPanel({ open, onClose, items }: Props) {
         </div>
 
         <ul className="max-h-[min(60vh,520px)] space-y-2 overflow-y-auto pr-1 scroll-area-themed">
-          {processed.map((it) => (
-            <li
-              key={it.id}
-              className="flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex min-w-0 flex-1 gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
-                  {it.imageUrl ? (
-                    <img
-                      src={it.imageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
-                      —
-                    </div>
-                  )}
+          {processed.map((it) => {
+            const rowClass =
+              'flex w-full flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 text-left shadow-sm transition hover:border-zinc-200 hover:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-slate-600 dark:hover:bg-slate-800 sm:flex-row sm:items-center sm:justify-between';
+            const focusClass =
+              'focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-500/40';
+            const inner = (
+              <>
+                <div className="flex min-w-0 flex-1 gap-3">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
+                    {it.imageUrl ? (
+                      <img
+                        src={it.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
+                        —
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{it.productName}</p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-2 text-base font-medium text-zinc-700 dark:text-slate-300">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span aria-hidden>📍</span>
+                        Raf #{it.shelfId}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{it.productName}</p>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-base font-medium text-zinc-700 dark:text-slate-300">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden>📍</span>
-                      Raf #{it.shelfId}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <StockBadge quantity={it.quantity} />
-            </li>
-          ))}
+                <StockBadge quantity={it.quantity} />
+              </>
+            );
+            return (
+              <li key={it.id}>
+                {onProductSelect ? (
+                  <button
+                    type="button"
+                    onClick={() => onProductSelect(it)}
+                    className={`${rowClass} ${focusClass}`}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className={rowClass}>{inner}</div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
