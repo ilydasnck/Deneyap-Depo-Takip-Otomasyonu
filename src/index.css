@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+/* Manuel tema: html.dark ile çalışır (OS yerine sınıf). Dokümantasyon: tailwindcss.com/docs/dark-mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.scroll-area-themed {
+  scrollbar-width: thin;
+  scrollbar-color: #2196f3 #e5e7eb;
+}
+
+.scroll-area-themed::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area-themed::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+
+.scroll-area-themed::-webkit-scrollbar-thumb {
+  background: #2196f3;
+  border-radius: 9999px;
+}
+
+.dark .scroll-area-themed {
+  scrollbar-color: #1976d2 #1e293b;
+}
+
+.dark .scroll-area-themed::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark .scroll-area-themed::-webkit-scrollbar-thumb {
+  background: #1976d2;
+}
