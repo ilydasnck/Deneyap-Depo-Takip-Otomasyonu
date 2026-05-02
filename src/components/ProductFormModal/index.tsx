@@ -160,9 +160,12 @@ export default function ProductFormModal({
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
+              placeholder="https://... (kısa adres tüm cihazlarda senkron olur)"
               className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-base dark:border-slate-600 dark:bg-slate-800"
             />
+            <span className="mt-1 block text-xs text-zinc-500 dark:text-slate-500">
+              Katalogdaki ürünle aynı raf ve adı yazarsanız görsel urunler.json’dan eşlenir. Çok büyük yapıştırılmış görseller veritabanına sığmaz; mümkünse bir görsel bağlantısı kullanın.
+            </span>
           </label>
           {url.trim() ? (
             <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-slate-600">

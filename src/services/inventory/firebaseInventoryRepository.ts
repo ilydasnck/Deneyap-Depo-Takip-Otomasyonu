@@ -11,16 +11,26 @@ import type { InventoryRepository } from '@/services/inventory/repository';
 
 const COLLECTION = 'inventory_items';
 
-/** Katalog (urunler.json) görselleri birleştirmede kullanılır; manuel eklenen ürün görseli URL olarak saklanır (diğer cihazlar için). */
+/**
+ * Firestore belge boyutu üst sınırı (~1 MiB); katalogdaki devasa data: base64 görselleri yazılmaz.
+ * http(s) ve site içi kısa URL’ler saklanır; görüntü katalog eşlemesi veya JSON birleştirmesiyle tamamlanır.
+ */
+function persistableImageUrl(url: string | undefined): string | null {
+  const img = url?.trim();
+  if (!img) return null;
+  if (img.startsWith('data:')) return null;
+  if (img.length > 400_000) return null;
+  return img;
+}
+
 function toFirestoreFields(it: InventoryItem): Record<string, unknown> {
-  const img = it.imageUrl?.trim();
   return {
     shelfId: it.shelfId,
     productName: it.productName,
     quantity: it.quantity,
     quantityRecorded: it.quantityRecorded === true,
     category: it.category?.trim() ?? null,
-    imageUrl: img && img.length > 0 ? img : null,
+    imageUrl: persistableImageUrl(it.imageUrl),
   };
 }
 

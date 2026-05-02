@@ -5,7 +5,8 @@ function slugPart(name: string): string {
     .slice(0, 48);
 }
 
-function normalizeTr(text: string): string {
+/** Ürün adı eşlemesi (raf+katalog görseli için); harici kullanıma açık */
+export function normalizeTr(text: string): string {
   return text
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

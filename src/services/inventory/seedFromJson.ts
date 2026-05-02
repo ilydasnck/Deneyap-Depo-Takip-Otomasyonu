@@ -1,4 +1,4 @@
-import { seedItemId } from '@/lib/stableId';
+import { normalizeTr, seedItemId } from '@/lib/stableId';
 import type { InventoryItem } from '@/types/inventory';
 import type { WarehouseJsonShelf } from '@/types/warehouseJson';
 
@@ -58,5 +58,28 @@ export function mergeWarehouseJsonIntoItems(
     if (!savedIds.has(s.id)) merged.push(s);
   }
 
-  return merged;
+  return enrichMissingImagesFromCatalog(merged, shelves);
+}
+
+/** Yeni eklenen (UUID) kayıtlarda görsel boşsa, aynı raf + ürün adı katalogda varsa fotograf kullanılır — diğer cihazlar urunler.json ile görür. */
+function enrichMissingImagesFromCatalog(
+  items: InventoryItem[],
+  shelves: WarehouseJsonShelf[],
+): InventoryItem[] {
+  const byShelfAndName = new Map<string, string>();
+  for (const shelf of shelves) {
+    for (const u of shelf.urunler) {
+      const foto = u.fotograf?.trim();
+      if (!foto) continue;
+      const key = `${shelf.raf_no}::${normalizeTr(u.ad)}`;
+      if (!byShelfAndName.has(key)) byShelfAndName.set(key, foto);
+    }
+  }
+  return items.map((it) => {
+    if (it.imageUrl?.trim()) return it;
+    const key = `${it.shelfId}::${normalizeTr(it.productName)}`;
+    const foto = byShelfAndName.get(key);
+    if (foto) return { ...it, imageUrl: foto };
+    return it;
+  });
 }
