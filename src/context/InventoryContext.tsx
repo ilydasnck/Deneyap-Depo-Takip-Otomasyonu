@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -58,8 +59,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const repo = useMemo(() => getInventoryRepository(), []);
+  const itemsRef = useRef<InventoryItem[]>([]);
+  itemsRef.current = items;
+  const saveChainRef = useRef(Promise.resolve<void>(undefined));
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
+
+  /** Ardışık kayıtları sıraya alır; eşzamanlı yazışmalarda eski listenin üzerine yazılmasını önler. */
+  const enqueueSave = useCallback(
+    (snapshot: InventoryItem[]) => {
+      saveChainRef.current = saveChainRef.current
+        .catch(() => undefined)
+        .then(() => repo.saveItems(snapshot))
+        .then(() => setSyncError(null))
+        .catch((e: unknown) =>
+          setSyncError(
+            e instanceof Error
+              ? e.message
+              : 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.',
+          ),
+        );
+    },
+    [repo],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -97,33 +119,39 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || error) return;
     const t = window.setTimeout(() => {
-      void repo
-        .saveItems(items)
-        .then(() => setSyncError(null))
-        .catch((e) =>
-          setSyncError(
-            e instanceof Error ? e.message : 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.',
-          ),
-        );
+      enqueueSave(itemsRef.current);
     }, SAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
-  }, [items, loading, error, repo]);
+  }, [items, loading, error, enqueueSave]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    const flush = () => {
+      if (document.visibilityState === 'hidden') enqueueSave(itemsRef.current);
+    };
+    document.addEventListener('visibilitychange', flush);
+    return () => document.removeEventListener('visibilitychange', flush);
+  }, [loading, error, enqueueSave]);
 
   const addItem = useCallback((input: AddInput) => {
     const id = crypto.randomUUID();
-    setItems((prev) => [
-      ...prev,
-      {
-        id,
-        shelfId: input.shelfId,
-        productName: input.productName.trim(),
-        quantity: Math.max(0, Math.floor(input.quantity)),
-        quantityRecorded: true,
-        category: input.category?.trim() || undefined,
-        imageUrl: input.imageUrl?.trim() || undefined,
-      },
-    ]);
-  }, []);
+    setItems((prev) => {
+      const next = [
+        ...prev,
+        {
+          id,
+          shelfId: input.shelfId,
+          productName: input.productName.trim(),
+          quantity: Math.max(0, Math.floor(input.quantity)),
+          quantityRecorded: true,
+          category: input.category?.trim() || undefined,
+          imageUrl: input.imageUrl?.trim() || undefined,
+        },
+      ];
+      enqueueSave(next);
+      return next;
+    });
+  }, [enqueueSave]);
 
   const updateItem = useCallback(
     (
@@ -140,32 +168,41 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         >
       >,
     ) => {
-      setItems((prev) =>
-        prev.map((it) => {
+      setItems((prev) => {
+        const next = prev.map((it) => {
           if (it.id !== id) return it;
-          const next = { ...it, ...patch };
-          if (typeof next.quantity === 'number') {
-            next.quantity = Math.max(0, Math.floor(next.quantity));
-            next.quantityRecorded = true;
+          const row = { ...it, ...patch };
+          if (typeof row.quantity === 'number') {
+            row.quantity = Math.max(0, Math.floor(row.quantity));
+            row.quantityRecorded = true;
           }
-          if (typeof next.productName === 'string')
-            next.productName = next.productName.trim();
-          if (next.imageUrl !== undefined)
-            next.imageUrl = next.imageUrl?.trim() || undefined;
-          if (typeof next.shelfId === 'number')
-            next.shelfId = Math.min(84, Math.max(1, Math.floor(next.shelfId)));
-          if (next.category !== undefined)
-            next.category = next.category?.trim() || undefined;
-          return next;
-        }),
-      );
+          if (typeof row.productName === 'string')
+            row.productName = row.productName.trim();
+          if (row.imageUrl !== undefined)
+            row.imageUrl = row.imageUrl?.trim() || undefined;
+          if (typeof row.shelfId === 'number')
+            row.shelfId = Math.min(84, Math.max(1, Math.floor(row.shelfId)));
+          if (row.category !== undefined)
+            row.category = row.category?.trim() || undefined;
+          return row;
+        });
+        enqueueSave(next);
+        return next;
+      });
     },
-    [],
+    [enqueueSave],
   );
 
-  const deleteItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
-  }, []);
+  const deleteItem = useCallback(
+    (id: string) => {
+      setItems((prev) => {
+        const next = prev.filter((it) => it.id !== id);
+        enqueueSave(next);
+        return next;
+      });
+    },
+    [enqueueSave],
+  );
 
   const value = useMemo(
     () => ({
