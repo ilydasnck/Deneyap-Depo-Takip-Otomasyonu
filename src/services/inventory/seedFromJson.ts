@@ -62,7 +62,13 @@ export function mergeWarehouseJsonIntoItems(
 }
 
 /** Yeni eklenen (UUID) kayıtlarda görsel boşsa, aynı raf + ürün adı katalogda varsa fotograf kullanılır — diğer cihazlar urunler.json ile görür. */
-function enrichMissingImagesFromCatalog(
+/** Raf + ürün adı için boşluktan bağımsız eşleme (yazım farkları azalır) */
+function catalogNameKey(shelfId: number, rawName: string): string {
+  const compact = normalizeTr(rawName).replace(/\s+/g, '');
+  return `${shelfId}::${compact}`;
+}
+
+export function enrichMissingImagesFromCatalog(
   items: InventoryItem[],
   shelves: WarehouseJsonShelf[],
 ): InventoryItem[] {
@@ -71,14 +77,13 @@ function enrichMissingImagesFromCatalog(
     for (const u of shelf.urunler) {
       const foto = u.fotograf?.trim();
       if (!foto) continue;
-      const key = `${shelf.raf_no}::${normalizeTr(u.ad)}`;
+      const key = catalogNameKey(shelf.raf_no, u.ad);
       if (!byShelfAndName.has(key)) byShelfAndName.set(key, foto);
     }
   }
   return items.map((it) => {
     if (it.imageUrl?.trim()) return it;
-    const key = `${it.shelfId}::${normalizeTr(it.productName)}`;
-    const foto = byShelfAndName.get(key);
+    const foto = byShelfAndName.get(catalogNameKey(it.shelfId, it.productName));
     if (foto) return { ...it, imageUrl: foto };
     return it;
   });

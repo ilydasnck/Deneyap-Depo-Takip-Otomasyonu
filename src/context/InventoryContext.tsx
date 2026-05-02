@@ -9,8 +9,10 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { InventoryItem } from '@/types/inventory';
+import type { WarehouseJsonShelf } from '@/types/warehouseJson';
 import { getInventoryRepository } from '@/services/inventory';
 import {
+  enrichMissingImagesFromCatalog,
   fetchWarehouseJson,
   mergeWarehouseJsonIntoItems,
   seedInventoryFromWarehouseJson,
@@ -55,6 +57,9 @@ const SAVE_DEBOUNCE_MS = 500;
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [warehouseShelves, setWarehouseShelves] = useState<
+    WarehouseJsonShelf[] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -62,6 +67,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const itemsRef = useRef<InventoryItem[]>([]);
   itemsRef.current = items;
   const saveChainRef = useRef(Promise.resolve<void>(undefined));
+
+  const itemsForDisplay = useMemo(() => {
+    if (!warehouseShelves?.length) return items;
+    return enrichMissingImagesFromCatalog(items, warehouseShelves);
+  }, [items, warehouseShelves]);
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
 
@@ -94,6 +104,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             ? mergeWarehouseJsonIntoItems(saved, json)
             : seedInventoryFromWarehouseJson(json);
         if (!cancelled) {
+          setWarehouseShelves(json);
           setItems(next);
           try {
             await repo.saveItems(next);
@@ -206,7 +217,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      items,
+      items: itemsForDisplay,
       loading,
       error,
       syncError,
@@ -215,7 +226,16 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       updateItem,
       deleteItem,
     }),
-    [items, loading, error, syncError, clearSyncError, addItem, updateItem, deleteItem],
+    [
+      itemsForDisplay,
+      loading,
+      error,
+      syncError,
+      clearSyncError,
+      addItem,
+      updateItem,
+      deleteItem,
+    ],
   );
 
   return (
