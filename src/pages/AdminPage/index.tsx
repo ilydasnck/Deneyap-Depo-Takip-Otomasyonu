@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Plus } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
+import DataSyncNotice from '@/components/DataSyncNotice';
 import Layout from '@/components/Layout';
 import AdminLoginModal from '@/components/AdminLoginModal';
 import StatCards from '@/components/StatCards';
@@ -83,6 +84,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <Layout variant="admin" header={<AppHeader variant="admin" subtitle="Yönetici Paneli" />}>
+        <DataSyncNotice />
         <p className="text-center text-lg text-zinc-600 dark:text-slate-300">Yükleniyor…</p>
       </Layout>
     );
@@ -91,6 +93,7 @@ export default function AdminPage() {
   if (error) {
     return (
       <Layout variant="admin" header={<AppHeader variant="admin" subtitle="Yönetici Paneli" />}>
+        <DataSyncNotice />
         <p className="text-center text-lg text-red-600 dark:text-red-300">{error}</p>
       </Layout>
     );
@@ -126,6 +129,7 @@ export default function AdminPage() {
 
   return (
     <Layout variant="admin" header={adminHeader}>
+      <DataSyncNotice />
       <AdminLoginModal open={!authed} onSuccess={onLoginSuccess} />
 
       <div className={authed ? 'space-y-8' : 'pointer-events-none blur-sm'}>

@@ -10,6 +10,7 @@ import {
 import type { KeyboardEvent } from 'react';
 import { Search, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
+import DataSyncNotice from '@/components/DataSyncNotice';
 import Layout from '@/components/Layout';
 import AllProductsPanel from '@/components/AllProductsPanel';
 import ProductDetailModal from '@/components/ProductDetailModal';
@@ -86,6 +87,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <Layout header={<AppHeader />}>
+        <DataSyncNotice />
         <p className="text-center text-lg text-zinc-600 dark:text-slate-300">Yükleniyor…</p>
       </Layout>
     );
@@ -94,6 +96,7 @@ export default function HomePage() {
   if (error) {
     return (
       <Layout header={<AppHeader />}>
+        <DataSyncNotice />
         <p className="text-center text-lg text-red-600 dark:text-red-300">{error}</p>
       </Layout>
     );
@@ -101,6 +104,7 @@ export default function HomePage() {
 
   return (
     <Layout header={<AppHeader />}>
+      <DataSyncNotice />
       <div className="mx-auto flex w-full max-w-none flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <label className="group relative block min-w-0 flex-1">
           <span className="sr-only">Malzeme veya araç ara</span>

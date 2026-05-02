@@ -27,6 +27,9 @@ type InventoryContextValue = {
   items: InventoryItem[];
   loading: boolean;
   error: string | null;
+  /** Firestore/local kayıt başarısız olduğunda dolabilir */
+  syncError: string | null;
+  clearSyncError: () => void;
   addItem: (input: AddInput) => void;
   updateItem: (
     id: string,
@@ -53,7 +56,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const repo = useMemo(() => getInventoryRepository(), []);
+
+  const clearSyncError = useCallback(() => setSyncError(null), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +73,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             : seedInventoryFromWarehouseJson(json);
         if (!cancelled) {
           setItems(next);
-          await repo.saveItems(next);
+          try {
+            await repo.saveItems(next);
+            setSyncError(null);
+          } catch (e) {
+            setSyncError(
+              e instanceof Error ? e.message : 'İlk kayıt yapılamadı.',
+            );
+          }
         }
       } catch (e) {
         if (!cancelled)
@@ -84,7 +97,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || error) return;
     const t = window.setTimeout(() => {
-      void repo.saveItems(items);
+      void repo
+        .saveItems(items)
+        .then(() => setSyncError(null))
+        .catch((e) =>
+          setSyncError(
+            e instanceof Error ? e.message : 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.',
+          ),
+        );
     }, SAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
   }, [items, loading, error, repo]);
@@ -148,8 +168,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ items, loading, error, addItem, updateItem, deleteItem }),
-    [items, loading, error, addItem, updateItem, deleteItem],
+    () => ({
+      items,
+      loading,
+      error,
+      syncError,
+      clearSyncError,
+      addItem,
+      updateItem,
+      deleteItem,
+    }),
+    [items, loading, error, syncError, clearSyncError, addItem, updateItem, deleteItem],
   );
 
   return (
