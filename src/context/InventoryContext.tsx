@@ -54,7 +54,7 @@ type InventoryContextValue = {
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
 const SAVE_DEBOUNCE_MS = 500;
-const INITIAL_REMOTE_TIMEOUT_MS = 15000;
+const INITIAL_REMOTE_TIMEOUT_MS = 6000;
 const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Geçici olarak katalog verisi gösteriliyor.';
 const SAVE_TIMEOUT_MSG = 'Depo verisi kaydedilemedi. Ürünler yine de görüntüleniyor.';
 
@@ -117,38 +117,48 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const json = await fetchWarehouseJson();
+        if (!cancelled) {
+          setWarehouseShelves(json);
+          const seeded = seedInventoryFromWarehouseJson(json);
+          setItems(seeded);
+          setLoading(false);
+        }
+
         const saved = await withTimeout(
           repo.loadItems(),
           INITIAL_REMOTE_TIMEOUT_MS,
           LOAD_TIMEOUT_MSG,
         ).catch((e: unknown) => {
           if (!cancelled && e instanceof Error && e.message !== LOAD_TIMEOUT_MSG) {
-            setSyncError(
-              e.message,
-            );
+            setSyncError(e.message);
           }
           return null;
         });
+        if (cancelled) return;
+
         const next =
           saved !== null && saved.length > 0
             ? mergeWarehouseJsonIntoItems(saved, json)
             : seedInventoryFromWarehouseJson(json);
-        if (!cancelled) {
-          setWarehouseShelves(json);
-          setItems(next);
-          try {
-            await withTimeout(
-              repo.saveItems(next),
-              INITIAL_REMOTE_TIMEOUT_MS,
-              SAVE_TIMEOUT_MSG,
-            );
-            setSyncError(null);
-          } catch (e) {
-            if (e instanceof Error && e.message !== SAVE_TIMEOUT_MSG) {
+        setItems(next);
+
+        withTimeout(
+          repo.saveItems(next),
+          INITIAL_REMOTE_TIMEOUT_MS,
+          SAVE_TIMEOUT_MSG,
+        )
+          .then(() => {
+            if (!cancelled) setSyncError(null);
+          })
+          .catch((e: unknown) => {
+            if (
+              !cancelled &&
+              e instanceof Error &&
+              e.message !== SAVE_TIMEOUT_MSG
+            ) {
               setSyncError(e.message);
             }
-          }
-        }
+          });
       } catch (e) {
         if (!cancelled)
           setError(e instanceof Error ? e.message : 'Veri yüklenemedi');

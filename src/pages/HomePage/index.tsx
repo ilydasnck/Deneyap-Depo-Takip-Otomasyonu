@@ -8,7 +8,7 @@ import {
   uniqueSortedCategories,
 } from '@/lib/categoryUtils';
 import type { KeyboardEvent } from 'react';
-import { Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import DataSyncNotice from '@/components/DataSyncNotice';
 import Layout from '@/components/Layout';
@@ -38,6 +38,7 @@ export default function HomePage() {
   const [search, setSearch] = useState('');
   const [allOpen, setAllOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+  const [expandedShelves, setExpandedShelves] = useState<Set<number>>(() => new Set());
   const [recent, setRecent] = useState<string[]>(() => loadRecentSearches());
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
 
@@ -82,6 +83,15 @@ export default function HomePage() {
     setSearch(text);
     pushRecentSearch(text);
     setRecent(loadRecentSearches());
+  };
+
+  const toggleShelf = (shelfId: number) => {
+    setExpandedShelves((prev) => {
+      const next = new Set(prev);
+      if (next.has(shelfId)) next.delete(shelfId);
+      else next.add(shelfId);
+      return next;
+    });
   };
 
   if (loading) {
@@ -243,8 +253,18 @@ export default function HomePage() {
               key={shelfId}
               className="rounded-2xl border border-zinc-200/80 bg-white/80 p-4 shadow-md backdrop-blur-md dark:border-slate-600 dark:bg-slate-900/60 sm:p-5"
             >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => toggleShelf(shelfId)}
+                className="mb-1 flex w-full flex-wrap items-center justify-between gap-2 rounded-xl px-1 py-1 text-left hover:bg-zinc-100/80 dark:hover:bg-slate-800/60"
+                aria-expanded={expandedShelves.has(shelfId)}
+              >
                 <div className="flex items-center gap-2 text-lg font-semibold text-zinc-800 sm:text-xl dark:text-slate-100">
+                  {expandedShelves.has(shelfId) ? (
+                    <ChevronDown className="h-5 w-5 text-zinc-500 dark:text-slate-400" aria-hidden />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-zinc-500 dark:text-slate-400" aria-hidden />
+                  )}
                   <span aria-hidden>📍</span>
                   Raf #{shelfId}
                   {list.length > 1 ? (
@@ -253,41 +273,49 @@ export default function HomePage() {
                     </span>
                   ) : null}
                 </div>
-              </div>
-              <ul className="space-y-3">
-                {list.map((it) => (
-                  <li key={it.id}>
-                    <button
-                      type="button"
-                      onClick={() => setDetailItem(it)}
-                      className={[
-                        'flex w-full flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-left',
-                        'transition hover:border-zinc-200 hover:bg-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#B71C1C]/35',
-                        'sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600 dark:hover:bg-slate-800',
-                      ].join(' ')}
-                    >
-                      <div className="flex min-w-0 flex-1 gap-3">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
-                          {it.imageUrl ? (
-                            <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
-                              görsel yok
-                            </div>
-                          )}
+              </button>
+              {expandedShelves.has(shelfId) ? (
+                <ul className="space-y-3 pt-2">
+                  {list.map((it) => (
+                    <li key={it.id}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailItem(it)}
+                        className={[
+                          'flex w-full flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-left',
+                          'transition hover:border-zinc-200 hover:bg-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#B71C1C]/35',
+                          'sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600 dark:hover:bg-slate-800',
+                        ].join(' ')}
+                      >
+                        <div className="flex min-w-0 flex-1 gap-3">
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-600 dark:bg-slate-900">
+                            {it.imageUrl ? (
+                              <img
+                                src={it.imageUrl}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
+                                görsel yok
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-lg font-semibold">{it.productName}</p>
+                            <p className="mt-1 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
+                              {it.category?.trim() ? it.category : 'Kategori belirtilmedi'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-lg font-semibold">{it.productName}</p>
-                          <p className="mt-1 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
-                            {it.category?.trim() ? it.category : 'Kategori belirtilmedi'}
-                          </p>
-                        </div>
-                      </div>
-                      <StockBadge item={it} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                        <StockBadge item={it} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </article>
           ))
         )}

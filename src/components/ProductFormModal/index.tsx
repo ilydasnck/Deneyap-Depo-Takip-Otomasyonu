@@ -172,7 +172,13 @@ export default function ProductFormModal({
               <p className="bg-zinc-50 px-2 py-1 text-sm text-zinc-500 dark:bg-slate-800 dark:text-slate-400">
                 Önizleme
               </p>
-              <img src={url} alt="" className="max-h-40 w-full object-contain bg-white dark:bg-slate-900" />
+              <img
+                src={url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="max-h-40 w-full object-contain bg-white dark:bg-slate-900"
+              />
             </div>
           ) : null}
           <div className="flex gap-2 pt-2">
