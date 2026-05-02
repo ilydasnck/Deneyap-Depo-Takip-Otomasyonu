@@ -11,18 +11,24 @@ import type { InventoryRepository } from '@/services/inventory/repository';
 
 const COLLECTION = 'inventory_items';
 
-/** Görseller urunler.json ile birleştirilir; Firestore boyutu ve kota için görsel tutulmaz */
+/** Katalog (urunler.json) görselleri birleştirmede kullanılır; manuel eklenen ürün görseli URL olarak saklanır (diğer cihazlar için). */
 function toFirestoreFields(it: InventoryItem): Record<string, unknown> {
+  const img = it.imageUrl?.trim();
   return {
     shelfId: it.shelfId,
     productName: it.productName,
     quantity: it.quantity,
     quantityRecorded: it.quantityRecorded === true,
     category: it.category?.trim() ?? null,
+    imageUrl: img && img.length > 0 ? img : null,
   };
 }
 
 function fromFirestore(id: string, data: Record<string, unknown>): InventoryItem {
+  const imageUrl =
+    typeof data.imageUrl === 'string' && data.imageUrl.trim()
+      ? data.imageUrl.trim()
+      : undefined;
   return {
     id,
     shelfId: Number(data.shelfId),
@@ -33,6 +39,7 @@ function fromFirestore(id: string, data: Record<string, unknown>): InventoryItem
       typeof data.category === 'string' && data.category.trim()
         ? data.category.trim()
         : undefined,
+    imageUrl,
   };
 }
 
