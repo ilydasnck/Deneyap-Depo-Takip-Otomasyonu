@@ -1,0 +1,84 @@
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  writeBatch,
+} from 'firebase/firestore';
+import type { InventoryItem } from '@/types/inventory';
+import { getFirestoreDb } from '@/services/firebase/config';
+import type { InventoryRepository } from '@/services/inventory/repository';
+
+const COLLECTION = 'inventory_items';
+
+/** Görseller urunler.json ile birleştirilir; Firestore boyutu ve kota için görsel tutulmaz */
+function toFirestoreFields(it: InventoryItem): Record<string, unknown> {
+  return {
+    shelfId: it.shelfId,
+    productName: it.productName,
+    quantity: it.quantity,
+    quantityRecorded: it.quantityRecorded === true,
+    category: it.category?.trim() ?? null,
+  };
+}
+
+function fromFirestore(id: string, data: Record<string, unknown>): InventoryItem {
+  return {
+    id,
+    shelfId: Number(data.shelfId),
+    productName: String(data.productName ?? ''),
+    quantity: Math.max(0, Math.floor(Number(data.quantity ?? 0))),
+    quantityRecorded: data.quantityRecorded === true,
+    category:
+      typeof data.category === 'string' && data.category.trim()
+        ? data.category.trim()
+        : undefined,
+  };
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+export class FirebaseInventoryRepository implements InventoryRepository {
+  async loadItems(): Promise<InventoryItem[] | null> {
+    const fs = getFirestoreDb();
+    const snap = await getDocs(collection(fs, COLLECTION));
+    if (snap.empty) return [];
+    return snap.docs.map((d) =>
+      fromFirestore(d.id, d.data() as Record<string, unknown>),
+    );
+  }
+
+  async saveItems(items: InventoryItem[]): Promise<void> {
+    const fs = getFirestoreDb();
+    const colRef = collection(fs, COLLECTION);
+    const snap = await getDocs(colRef);
+    const wantIds = new Set(items.map((i) => i.id));
+
+    for (const d of snap.docs) {
+      if (!wantIds.has(d.id)) {
+        await deleteDoc(doc(fs, COLLECTION, d.id));
+      }
+    }
+
+    const parts = chunk(items, 400);
+    for (const part of parts) {
+      const batch = writeBatch(fs);
+      for (const it of part) {
+        const ref = doc(fs, COLLECTION, it.id);
+        batch.set(ref, toFirestoreFields(it), { merge: true });
+      }
+      await batch.commit();
+    }
+  }
+}
+
+let singleton: FirebaseInventoryRepository | null = null;
+
+export function getFirebaseInventoryRepository(): InventoryRepository {
+  if (!singleton) singleton = new FirebaseInventoryRepository();
+  return singleton;
+}

@@ -3,7 +3,7 @@ import { INVENTORY_STORAGE_KEY } from '@/services/inventory/constants';
 import type { InventoryRepository } from '@/services/inventory/repository';
 
 export class LocalStorageInventoryRepository implements InventoryRepository {
-  loadItems(): InventoryItem[] | null {
+  async loadItems(): Promise<InventoryItem[] | null> {
     try {
       const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
       if (!raw) return null;
@@ -15,14 +15,14 @@ export class LocalStorageInventoryRepository implements InventoryRepository {
     }
   }
 
-  saveItems(items: InventoryItem[]): void {
+  async saveItems(items: InventoryItem[]): Promise<void> {
     localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
   }
 }
 
 let singleton: InventoryRepository | null = null;
 
-export function getInventoryRepository(): InventoryRepository {
+export function getLocalStorageInventoryRepository(): InventoryRepository {
   if (!singleton) singleton = new LocalStorageInventoryRepository();
   return singleton;
 }

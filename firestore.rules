@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Üretimde burayı kimlik doğrulama ile sıkılaştırın (Firebase Authentication).
+    match /inventory_items/{itemId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -47,6 +47,8 @@ type InventoryContextValue = {
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
+const SAVE_DEBOUNCE_MS = 500;
+
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,14 +60,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const json = await fetchWarehouseJson();
-        const saved = repo.loadItems();
+        const saved = await repo.loadItems();
         const next =
           saved !== null && saved.length > 0
             ? mergeWarehouseJsonIntoItems(saved, json)
             : seedInventoryFromWarehouseJson(json);
         if (!cancelled) {
           setItems(next);
-          repo.saveItems(next);
+          await repo.saveItems(next);
         }
       } catch (e) {
         if (!cancelled)
@@ -81,7 +83,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading || error) return;
-    repo.saveItems(items);
+    const t = window.setTimeout(() => {
+      void repo.saveItems(items);
+    }, SAVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
   }, [items, loading, error, repo]);
 
   const addItem = useCallback((input: AddInput) => {
@@ -106,7 +111,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       patch: Partial<
         Pick<
           InventoryItem,
-          'productName' | 'quantity' | 'imageUrl' | 'shelfId'           | 'quantityRecorded'
+          | 'productName'
+          | 'quantity'
+          | 'imageUrl'
+          | 'shelfId'
+          | 'quantityRecorded'
           | 'category'
         >
       >,

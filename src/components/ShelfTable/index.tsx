@@ -115,7 +115,7 @@ export default function ShelfTable({ items, onAdd, onEdit, onDelete }: Props) {
         rows.push({ shelfId, products: filtered, rawCount: raw.length });
         continue;
       }
-      if (raw.length === 0 && stockFilter === 'all') {
+      if (raw.length === 0 && stockFilter === 'all' && categoryFilter === 'all') {
         const q = search.trim();
         if (!q || shelfMatchesSearch(shelfId, q)) {
           rows.push({ shelfId, products: [], rawCount: 0 });
