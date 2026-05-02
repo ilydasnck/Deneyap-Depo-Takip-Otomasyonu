@@ -1,20 +1,13 @@
 import { useEffect, useCallback } from 'react';
-import { MapPin, Package, X } from 'lucide-react';
+import { LayoutGrid, MapPin, Package, X } from 'lucide-react';
 import type { InventoryItem } from '@/types/inventory';
-import { formatQuantityTr, getStockLevel } from '@/lib/stockHelpers';
+import { formatQuantityVisitor, stockStatusTextVisitor } from '@/lib/stockHelpers';
 
 type Props = {
   open: boolean;
   item: InventoryItem | null;
   onClose: () => void;
 };
-
-function stockStatusText(quantity: number): string {
-  const level = getStockLevel(quantity);
-  if (level === 'out_of_stock') return 'Tükendi';
-  if (level === 'low_stock') return 'Düşük stok';
-  return 'Stokta';
-}
 
 export default function ProductDetailModal({ open, item, onClose }: Props) {
   const handleClose = useCallback(() => {
@@ -37,7 +30,7 @@ export default function ProductDetailModal({ open, item, onClose }: Props) {
 
   if (!open || !item) return null;
 
-  const status = stockStatusText(item.quantity);
+  const status = stockStatusTextVisitor(item);
 
   return (
     <div
@@ -56,7 +49,7 @@ export default function ProductDetailModal({ open, item, onClose }: Props) {
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-zinc-100 bg-white/95 px-4 py-3 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 sm:px-5">
           <h2
             id="product-detail-title"
-            className="min-w-0 flex-1 truncate pr-2 text-lg font-bold text-zinc-900 dark:text-slate-50"
+            className="min-w-0 flex-1 truncate pr-2 text-xl font-bold text-zinc-900 sm:text-2xl dark:text-slate-50"
           >
             {item.productName}
           </h2>
@@ -66,7 +59,7 @@ export default function ProductDetailModal({ open, item, onClose }: Props) {
             className="shrink-0 rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             aria-label="Kapat"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
@@ -79,7 +72,7 @@ export default function ProductDetailModal({ open, item, onClose }: Props) {
                 className="mx-auto max-h-[min(50vh,320px)] w-full object-contain"
               />
             ) : (
-              <div className="flex aspect-[4/3] max-h-64 w-full items-center justify-center text-sm text-zinc-400 dark:text-slate-500">
+              <div className="flex aspect-[4/3] max-h-64 w-full items-center justify-center text-base text-zinc-400 dark:text-slate-500">
                 Görsel yok
               </div>
             )}
@@ -87,26 +80,41 @@ export default function ProductDetailModal({ open, item, onClose }: Props) {
 
           <dl className="space-y-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50">
             <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-slate-600">
-              <dt className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-slate-400">
-                <MapPin className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+              <dt className="flex items-center gap-2 text-base font-medium text-zinc-500 dark:text-slate-400">
+                <MapPin className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
                 Raf
               </dt>
-              <dd className="text-right text-base font-bold text-zinc-900 dark:text-slate-100">
+              <dd className="text-right text-lg font-bold text-zinc-900 dark:text-slate-100">
                 #{item.shelfId}
               </dd>
             </div>
             <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-slate-600">
-              <dt className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-slate-400">
-                <Package className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+              <dt className="flex items-center gap-2 text-base font-medium text-zinc-500 dark:text-slate-400">
+                <LayoutGrid className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+                Kategori
+              </dt>
+              <dd className="max-w-[65%] text-right text-base font-semibold text-violet-800 dark:text-violet-200">
+                {item.category?.trim() ? item.category : 'Belirtilmedi'}
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-slate-600">
+              <dt className="flex items-center gap-2 text-base font-medium text-zinc-500 dark:text-slate-400">
+                <Package className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                 Miktar
               </dt>
-              <dd className="text-right text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                {formatQuantityTr(item.quantity)}
+              <dd
+                className={
+                  status === 'Belirtilmedi'
+                    ? 'text-right text-xl font-semibold text-zinc-500 dark:text-zinc-400'
+                    : 'text-right text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400'
+                }
+              >
+                {formatQuantityVisitor(item)}
               </dd>
             </div>
             <div className="flex items-start justify-between gap-3">
-              <dt className="text-sm font-medium text-zinc-500 dark:text-slate-400">Durum</dt>
-              <dd className="text-right text-base font-semibold text-zinc-900 dark:text-slate-100">
+              <dt className="text-base font-medium text-zinc-500 dark:text-slate-400">Durum</dt>
+              <dd className="text-right text-lg font-semibold text-zinc-900 dark:text-slate-100">
                 {status}
               </dd>
             </div>

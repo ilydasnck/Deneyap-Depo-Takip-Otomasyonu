@@ -14,6 +14,8 @@ export function seedInventoryFromWarehouseJson(
         shelfId: shelf.raf_no,
         productName: u.ad,
         quantity: 0,
+        quantityRecorded: false,
+        category: shelf.kategori?.trim() || undefined,
         imageUrl: url ? url : undefined,
       });
     });
@@ -41,8 +43,11 @@ export function mergeWarehouseJsonIntoItems(
     const seed = seedById.get(it.id);
     if (!seed) return it;
     const jsonImage = seed.imageUrl?.trim();
+    const jsonCat = seed.category?.trim();
     return {
       ...it,
+      category:
+        jsonCat && jsonCat.length > 0 ? jsonCat : it.category,
       imageUrl:
         jsonImage && jsonImage.length > 0 ? jsonImage : it.imageUrl,
     };

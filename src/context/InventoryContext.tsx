@@ -19,6 +19,7 @@ type AddInput = {
   shelfId: number;
   productName: string;
   quantity: number;
+  category?: string;
   imageUrl?: string;
 };
 
@@ -30,7 +31,15 @@ type InventoryContextValue = {
   updateItem: (
     id: string,
     patch: Partial<
-      Pick<InventoryItem, 'productName' | 'quantity' | 'imageUrl' | 'shelfId'>
+      Pick<
+        InventoryItem,
+        | 'productName'
+        | 'quantity'
+        | 'imageUrl'
+        | 'shelfId'
+        | 'quantityRecorded'
+        | 'category'
+      >
     >,
   ) => void;
   deleteItem: (id: string) => void;
@@ -84,6 +93,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         shelfId: input.shelfId,
         productName: input.productName.trim(),
         quantity: Math.max(0, Math.floor(input.quantity)),
+        quantityRecorded: true,
+        category: input.category?.trim() || undefined,
         imageUrl: input.imageUrl?.trim() || undefined,
       },
     ]);
@@ -93,21 +104,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     (
       id: string,
       patch: Partial<
-        Pick<InventoryItem, 'productName' | 'quantity' | 'imageUrl' | 'shelfId'>
+        Pick<
+          InventoryItem,
+          'productName' | 'quantity' | 'imageUrl' | 'shelfId'           | 'quantityRecorded'
+          | 'category'
+        >
       >,
     ) => {
       setItems((prev) =>
         prev.map((it) => {
           if (it.id !== id) return it;
           const next = { ...it, ...patch };
-          if (typeof next.quantity === 'number')
+          if (typeof next.quantity === 'number') {
             next.quantity = Math.max(0, Math.floor(next.quantity));
+            next.quantityRecorded = true;
+          }
           if (typeof next.productName === 'string')
             next.productName = next.productName.trim();
           if (next.imageUrl !== undefined)
             next.imageUrl = next.imageUrl?.trim() || undefined;
           if (typeof next.shelfId === 'number')
             next.shelfId = Math.min(84, Math.max(1, Math.floor(next.shelfId)));
+          if (next.category !== undefined)
+            next.category = next.category?.trim() || undefined;
           return next;
         }),
       );

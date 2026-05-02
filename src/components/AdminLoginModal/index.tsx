@@ -47,14 +47,14 @@ export default function AdminLoginModal({ open, onSuccess }: Props) {
       >
         <div className="mb-4 flex items-center gap-2 text-[#B71C1C]">
           <Lock className="h-6 w-6" aria-hidden />
-          <h2 id="admin-login-title" className="text-lg font-bold">
+          <h2 id="admin-login-title" className="text-xl font-bold">
             Yönetici Girişi
           </h2>
         </div>
-        <p className="mb-4 text-sm text-zinc-600 dark:text-slate-400">
+        <p className="mb-4 text-base text-zinc-600 dark:text-slate-400">
           Devam etmek için yönetici şifresini girin.
         </p>
-        <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+        <label className="block text-sm font-medium text-zinc-600 dark:text-slate-400">
           Şifre
           <input
             ref={inputRef}
@@ -64,17 +64,17 @@ export default function AdminLoginModal({ open, onSuccess }: Props) {
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={err ? true : undefined}
             aria-describedby={err ? 'admin-login-err' : undefined}
-            className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none ring-red-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+            className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-base outline-none ring-red-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
           />
         </label>
         {err ? (
-          <p id="admin-login-err" className="mt-2 text-sm text-red-600" role="alert">
+          <p id="admin-login-err" className="mt-2 text-base text-red-600" role="alert">
             {err}
           </p>
         ) : null}
         <button
           type="submit"
-          className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+          className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] py-2.5 text-base font-semibold text-white shadow-md transition hover:brightness-110"
         >
           Giriş Yap
         </button>

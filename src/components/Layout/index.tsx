@@ -33,7 +33,7 @@ export default function Layout({ children, variant = 'home', header }: Props) {
         <div className="relative z-10 w-full min-w-0">{header}</div>
       ) : null}
 
-      <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:max-w-7xl xl:px-8 2xl:max-w-[min(100%,92rem)]">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl px-4 pb-16 pt-6 text-base leading-relaxed sm:px-6 md:text-lg lg:max-w-7xl xl:px-8 2xl:max-w-[min(100%,92rem)]">
         {children}
       </div>
     </div>

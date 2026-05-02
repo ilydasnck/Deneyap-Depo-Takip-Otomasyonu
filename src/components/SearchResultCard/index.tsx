@@ -1,5 +1,6 @@
 import { MapPin } from 'lucide-react';
 import type { InventoryItem } from '@/types/inventory';
+import { isVisitorStockUnspecified } from '@/lib/stockHelpers';
 
 type Props = {
   item: InventoryItem;
@@ -33,18 +34,34 @@ export default function SearchResultCard({ item, onSelect }: Props) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-bold leading-snug text-slate-900 dark:text-slate-50">
+          <h3 className="text-xl font-bold leading-snug text-slate-900 sm:text-2xl dark:text-slate-50">
             {item.productName}
           </h3>
+          <p className="mt-2 text-base font-medium text-violet-700 dark:text-violet-300">
+            {item.category?.trim() ? item.category : 'Kategori belirtilmedi'}
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-base font-bold text-white shadow-sm">
-              <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-lg font-bold text-white shadow-sm">
+              <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
               Raf #{item.shelfId}
             </span>
-            <span className="inline-flex items-center rounded-lg bg-slate-50 px-3.5 py-1.5 text-base ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-600">
+            <span
+              className={[
+                'inline-flex items-center rounded-lg px-3.5 py-2 text-lg ring-1',
+                isVisitorStockUnspecified(item)
+                  ? 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-400 dark:ring-slate-600'
+                  : 'bg-slate-50 ring-slate-100 dark:bg-slate-800 dark:ring-slate-600',
+              ].join(' ')}
+            >
               <span className="text-slate-600 dark:text-slate-400">Stok: </span>
-              <span className="font-bold text-amber-600 dark:text-amber-400">
-                {item.quantity}
+              <span
+                className={
+                  isVisitorStockUnspecified(item)
+                    ? 'font-semibold text-slate-500 dark:text-slate-400'
+                    : 'font-bold text-amber-600 dark:text-amber-400'
+                }
+              >
+                {isVisitorStockUnspecified(item) ? 'Belirtilmedi' : item.quantity}
               </span>
             </span>
           </div>

@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Filter, X } from 'lucide-react';
 import type { InventoryItem, SortOption, StockFilter } from '@/types/inventory';
-import { countByStockLevel } from '@/lib/stockHelpers';
-import { filterByStock, filterByText, sortItems } from '@/lib/sortAndFilter';
+import { countByStockLevelVisitor } from '@/lib/stockHelpers';
+import {
+  hasUncategorizedItems,
+  UNCATEGORIZED_FILTER,
+  uniqueSortedCategories,
+} from '@/lib/categoryUtils';
+import {
+  filterByCategory,
+  filterByStock,
+  filterByText,
+  sortItems,
+} from '@/lib/sortAndFilter';
 import StockBadge from '@/components/StockBadge';
 
 type Props = {
@@ -37,15 +47,20 @@ export default function AllProductsPanel({
   const [q, setQ] = useState('');
   const [stock, setStock] = useState<StockFilter>('all');
   const [sort, setSort] = useState<SortOption>('name_asc');
+  const [category, setCategory] = useState<'all' | string>('all');
+
+  const categoryNames = useMemo(() => uniqueSortedCategories(items), [items]);
+  const showUncategorizedOpt = useMemo(() => hasUncategorizedItems(items), [items]);
 
   const processed = useMemo(() => {
     let list = filterByText(items, q);
+    list = filterByCategory(list, category);
     list = filterByStock(list, stock);
     list = sortItems(list, sort);
     return list;
-  }, [items, q, stock, sort]);
+  }, [items, q, stock, sort, category]);
 
-  const counts = useMemo(() => countByStockLevel(processed), [processed]);
+  const counts = useMemo(() => countByStockLevelVisitor(processed), [processed]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,14 +95,20 @@ export default function AllProductsPanel({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-              <Filter className="h-5 w-5" aria-hidden />
-              <h2 id="all-products-title" className="text-lg font-bold sm:text-xl">
+              <Filter className="h-6 w-6" aria-hidden />
+              <h2 id="all-products-title" className="text-xl font-bold sm:text-2xl">
                 Tüm Ürünler
               </h2>
             </div>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-slate-400">
+            <p className="mt-1 text-base text-zinc-600 dark:text-slate-400">
               {processed.length} ürün listeleniyor · Stokta: {counts.inStock} · Düşük:{' '}
               {counts.low} · Tükendi: {counts.out}
+              {counts.unspecified > 0 ? (
+                <>
+                  {' '}
+                  · Belirtilmedi: {counts.unspecified}
+                </>
+              ) : null}
             </p>
           </div>
           <button
@@ -100,22 +121,40 @@ export default function AllProductsPanel({
           </button>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block text-sm font-medium text-zinc-600 dark:text-slate-400">
             Ara
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Ürün adı veya raf no..."
-              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+              placeholder="Ürün, kategori veya raf no..."
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
             />
           </label>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+          <label className="block text-sm font-medium text-zinc-600 dark:text-slate-400">
+            Kategori
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+            >
+              <option value="all">Tümü</option>
+              {showUncategorizedOpt ? (
+                <option value={UNCATEGORIZED_FILTER}>Kategori yok</option>
+              ) : null}
+              {categoryNames.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-zinc-600 dark:text-slate-400">
             Stok Durumu
             <select
               value={stock}
               onChange={(e) => setStock(e.target.value as StockFilter)}
-              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
             >
               {(Object.keys(stockFilterLabels) as StockFilter[]).map((k) => (
                 <option key={k} value={k}>
@@ -124,12 +163,12 @@ export default function AllProductsPanel({
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-slate-400">
+          <label className="block text-sm font-medium text-zinc-600 dark:text-slate-400">
             Sırala
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base outline-none ring-blue-500/30 focus:ring-2 dark:border-slate-600 dark:bg-slate-800"
             >
               {(Object.keys(sortLabels) as SortOption[]).map((k) => (
                 <option key={k} value={k}>
@@ -157,14 +196,17 @@ export default function AllProductsPanel({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
+                      <div className="flex h-full w-full items-center justify-center text-sm text-zinc-400">
                         —
                       </div>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">{it.productName}</p>
-                    <p className="mt-1.5 flex flex-wrap items-center gap-2 text-base font-medium text-zinc-700 dark:text-slate-300">
+                    <p className="truncate text-lg font-semibold">{it.productName}</p>
+                    <p className="mt-0.5 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
+                      {it.category?.trim() ? it.category : 'Kategori yok'}
+                    </p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-2 text-lg font-medium text-zinc-700 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1.5">
                         <span aria-hidden>📍</span>
                         Raf #{it.shelfId}
@@ -172,7 +214,7 @@ export default function AllProductsPanel({
                     </p>
                   </div>
                 </div>
-                <StockBadge quantity={it.quantity} />
+                <StockBadge item={it} />
               </>
             );
             return (

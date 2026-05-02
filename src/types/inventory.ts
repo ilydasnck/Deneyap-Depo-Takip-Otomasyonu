@@ -3,6 +3,10 @@ export interface InventoryItem {
   shelfId: number;
   productName: string;
   quantity: number;
+  /** Yönetici adet girdiyse true; katalogdan gelen varsayılan 0 için false — kullanıcıya 0 gösterilmez */
+  quantityRecorded?: boolean;
+  /** Rafın JSON kataloğundaki kategori (örn. Elektronik Ölçüm) */
+  category?: string;
   imageUrl?: string;
 }
 

@@ -1,4 +1,12 @@
 import { useMemo, useState } from 'react';
+import {
+  filterByCategory,
+} from '@/lib/sortAndFilter';
+import {
+  hasUncategorizedItems,
+  UNCATEGORIZED_FILTER,
+  uniqueSortedCategories,
+} from '@/lib/categoryUtils';
 import type { KeyboardEvent } from 'react';
 import { Search, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
@@ -30,16 +38,22 @@ export default function HomePage() {
   const [allOpen, setAllOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [recent, setRecent] = useState<string[]>(() => loadRecentSearches());
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+
+  const categoryNames = useMemo(() => uniqueSortedCategories(items), [items]);
+  const showUncategorizedOpt = useMemo(() => hasUncategorizedItems(items), [items]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return items;
-    return items.filter(
+    let list = filterByCategory(items, categoryFilter);
+    if (!search.trim()) return list;
+    return list.filter(
       (it) =>
         matchesSearch(it.productName, search) ||
         matchesSearch(String(it.shelfId), search) ||
-        matchesSearch(`raf ${it.shelfId}`, search),
+        matchesSearch(`raf ${it.shelfId}`, search) ||
+        matchesSearch(it.category ?? '', search),
     );
-  }, [items, search]);
+  }, [items, search, categoryFilter]);
 
   const grouped = useMemo(() => groupByShelf(filtered), [filtered]);
 
@@ -72,7 +86,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <Layout header={<AppHeader />}>
-        <p className="text-center text-zinc-600 dark:text-slate-300">Yükleniyor…</p>
+        <p className="text-center text-lg text-zinc-600 dark:text-slate-300">Yükleniyor…</p>
       </Layout>
     );
   }
@@ -80,15 +94,15 @@ export default function HomePage() {
   if (error) {
     return (
       <Layout header={<AppHeader />}>
-        <p className="text-center text-red-600 dark:text-red-300">{error}</p>
+        <p className="text-center text-lg text-red-600 dark:text-red-300">{error}</p>
       </Layout>
     );
   }
 
   return (
     <Layout header={<AppHeader />}>
-      <div className="mx-auto w-full max-w-none">
-        <label className="group relative block">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <label className="group relative block min-w-0 flex-1">
           <span className="sr-only">Malzeme veya araç ara</span>
           <div
             className={[
@@ -108,7 +122,7 @@ export default function HomePage() {
               ].join(' ')}
               aria-hidden
             >
-              <Search className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2} />
+              <Search className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2} />
             </span>
             <input
               type="text"
@@ -120,9 +134,9 @@ export default function HomePage() {
               placeholder="Malzeme veya araç ara…"
               aria-label="Malzeme veya araç ara"
               className={[
-                'min-w-0 flex-1 border-0 bg-transparent py-4 text-base outline-none',
+                'min-w-0 flex-1 border-0 bg-transparent py-4 text-lg outline-none',
                 'placeholder:text-zinc-400 dark:placeholder:text-slate-500',
-                'sm:py-5 sm:text-lg',
+                'sm:py-5 sm:text-xl md:text-2xl',
                 search ? 'pr-1' : 'pr-4 sm:pr-6',
               ].join(' ')}
               autoComplete="off"
@@ -139,18 +153,48 @@ export default function HomePage() {
                 ].join(' ')}
                 aria-label="Aramayı temizle"
               >
-                <X className="h-5 w-5" strokeWidth={2} />
+                <X className="h-6 w-6" strokeWidth={2} />
               </button>
             ) : null}
           </div>
         </label>
+
+        <div className="flex w-full shrink-0 flex-col gap-1 sm:w-auto sm:min-w-[13rem]">
+          <span className="text-sm font-medium text-zinc-600 dark:text-slate-400 sm:sr-only">
+            Kategori
+          </span>
+          <label htmlFor="home-category-filter" className="sr-only">
+            Kategori filtresi
+          </label>
+          <select
+            id="home-category-filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className={[
+              'w-full rounded-2xl border border-zinc-200/90 bg-white px-4 py-3.5 text-base font-medium text-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.06)] outline-none',
+              'transition hover:border-zinc-300 focus:border-[#B71C1C]/35 focus:ring-2 focus:ring-[#B71C1C]/20',
+              'dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_40px_rgb(0,0,0,0.35)]',
+              'dark:hover:border-slate-500 dark:focus:border-[#B71C1C]/40 sm:min-h-[4.25rem] sm:py-4 sm:text-lg',
+            ].join(' ')}
+          >
+            <option value="all">Tüm kategoriler</option>
+            {showUncategorizedOpt ? (
+              <option value={UNCATEGORIZED_FILTER}>Kategori yok</option>
+            ) : null}
+            {categoryNames.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mx-auto mt-8 flex w-full max-w-none flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2.5">
             <span className="h-8 w-1.5 rounded-full bg-[#B71C1C]" aria-hidden />
-            <h2 className="text-lg font-bold tracking-wide text-zinc-800 sm:text-xl dark:text-slate-100">
+            <h2 className="text-xl font-bold tracking-wide text-zinc-800 sm:text-2xl dark:text-slate-100">
               Sık Kullanılanlar
             </h2>
           </div>
@@ -160,7 +204,7 @@ export default function HomePage() {
                 key={c}
                 type="button"
                 onClick={() => applyChip(c)}
-                className="rounded-full border border-zinc-200 bg-zinc-100 px-4 py-2 text-base font-medium text-zinc-800 transition hover:bg-zinc-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                className="rounded-full border border-zinc-200 bg-zinc-100 px-5 py-2.5 text-lg font-medium text-zinc-800 transition hover:bg-zinc-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               >
                 {c}
               </button>
@@ -170,7 +214,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => setAllOpen(true)}
-          className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+          className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] px-6 py-3 text-base font-semibold text-white shadow-md transition hover:brightness-110"
         >
           Tüm Ürünler
         </button>
@@ -178,7 +222,7 @@ export default function HomePage() {
 
       <section className="mx-auto mt-10 w-full max-w-none space-y-4" aria-live="polite">
         {search.trim() && searchSorted.length === 0 ? (
-          <p className="text-center text-zinc-600 dark:text-slate-400">Sonuç bulunamadı.</p>
+          <p className="text-center text-lg text-zinc-600 dark:text-slate-400">Sonuç bulunamadı.</p>
         ) : null}
 
         {search.trim() ? (
@@ -196,11 +240,11 @@ export default function HomePage() {
               className="rounded-2xl border border-zinc-200/80 bg-white/80 p-4 shadow-md backdrop-blur-md dark:border-slate-600 dark:bg-slate-900/60 sm:p-5"
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-base font-semibold text-zinc-800 sm:text-lg dark:text-slate-100">
+                <div className="flex items-center gap-2 text-lg font-semibold text-zinc-800 sm:text-xl dark:text-slate-100">
                   <span aria-hidden>📍</span>
                   Raf #{shelfId}
                   {list.length > 1 ? (
-                    <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-sm font-bold text-violet-800 ring-1 ring-violet-500/30 dark:text-violet-200">
+                    <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-base font-bold text-violet-800 ring-1 ring-violet-500/30 dark:text-violet-200">
                       {list.length} ürün
                     </span>
                   ) : null}
@@ -223,16 +267,19 @@ export default function HomePage() {
                           {it.imageUrl ? (
                             <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] text-zinc-400">
+                            <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
                               görsel yok
                             </div>
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold">{it.productName}</p>
+                          <p className="truncate text-lg font-semibold">{it.productName}</p>
+                          <p className="mt-1 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
+                            {it.category?.trim() ? it.category : 'Kategori belirtilmedi'}
+                          </p>
                         </div>
                       </div>
-                      <StockBadge quantity={it.quantity} />
+                      <StockBadge item={it} />
                     </button>
                   </li>
                 ))}
@@ -243,7 +290,7 @@ export default function HomePage() {
       </section>
 
       {!search.trim() ? (
-        <p className="mx-auto mt-10 w-full max-w-none text-center text-sm text-zinc-500 dark:text-slate-400">
+        <p className="mx-auto mt-10 w-full max-w-none text-center text-base text-zinc-500 dark:text-slate-400 md:text-lg">
           Aramaya başlayın veya &quot;Tüm Ürünler&quot; ile tüm listeyi görüntüleyin.
         </p>
       ) : null}
