@@ -17,6 +17,7 @@ type Props = {
     productName: string;
     quantity: number;
     category?: string;
+    /** Yalnızca dolu veya düzenlemede kaldırma için `''` gönderilir; yeni kayıtta yoksa görsel alanı güncellenmez */
     imageUrl?: string;
   }) => void;
 };
@@ -78,12 +79,20 @@ export default function ProductFormModal({
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const trimmedUrl = url.trim();
+    /** Düzenlemede boş alan = görseli kaldır (`''`); yeni kayıtta alan yok = Firestore’da dokunma */
+    const imagePart =
+      trimmedUrl.length > 0
+        ? { imageUrl: trimmedUrl }
+        : mode === 'edit'
+          ? { imageUrl: '' as const }
+          : {};
     onSave({
       shelfId,
       productName: name.trim(),
       quantity: Number.isFinite(qty) ? qty : 0,
       category: category.trim() || undefined,
-      imageUrl: url.trim() || undefined,
+      ...imagePart,
     });
   };
 
@@ -164,7 +173,8 @@ export default function ProductFormModal({
               className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-base dark:border-slate-600 dark:bg-slate-800"
             />
             <span className="mt-1 block text-xs text-zinc-500 dark:text-slate-500">
-              Katalogdaki ürünle aynı raf ve adı yazarsanız görsel urunler.json’dan eşlenir. Çok büyük yapıştırılmış görseller veritabanına sığmaz; mümkünse bir görsel bağlantısı kullanın.
+              Kalıcı bir <strong className="font-medium">https://</strong> adresi kullanın (ör. Firebase Storage). Base64 yapıştırma
+              Firestore’a tam yazılmaz; Drive/Dropbox gibi süreli paylaşım linkleri de bir süre sonra çalışmayı keser.
             </span>
           </label>
           {url.trim() ? (

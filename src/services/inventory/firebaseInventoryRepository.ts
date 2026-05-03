@@ -12,8 +12,9 @@ import type { InventoryRepository } from '@/services/inventory/repository';
 const COLLECTION = 'inventory_items';
 
 /**
- * Firestore belge boyutu üst sınırı (~1 MiB); katalogdaki devasa data: base64 görselleri yazılmaz.
- * http(s) ve site içi kısa URL’ler saklanır; görüntü katalog eşlemesi veya JSON birleştirmesiyle tamamlanır.
+ * Firestore belge boyutu üst sınırı (~1 MiB); devasa `data:` base64 ve aşırı uzun string’ler yazılmaz.
+ * Kalıcı görüntü için `https://...` (tercihen kendi sunucunuz veya Firebase Storage) kullanın;
+ * imzalı / süreli paylaşım linkleri süresi dolunca tarayıcıda “kaybolmuş” gibi görünür.
  */
 function persistableImageUrl(url: string | undefined): string | null {
   const img = url?.trim();
@@ -24,14 +25,23 @@ function persistableImageUrl(url: string | undefined): string | null {
 }
 
 function toFirestoreFields(it: InventoryItem): Record<string, unknown> {
-  return {
+  const out: Record<string, unknown> = {
     shelfId: it.shelfId,
     productName: it.productName,
     quantity: it.quantity,
     quantityRecorded: it.quantityRecorded === true,
     category: it.category?.trim() ?? null,
-    imageUrl: persistableImageUrl(it.imageUrl),
   };
+  const persisted = persistableImageUrl(it.imageUrl);
+  if (persisted !== null) {
+    out.imageUrl = persisted;
+  } else if (it.imageUrl === '') {
+    /** Yönetici panelinde görsel alanı bilinçle temizlendi */
+    out.imageUrl = null;
+  }
+  /** `undefined` veya `data:` / çok uzun metin: alan gönderilmez — konsoldan eklenen URL veya
+   *  eski https değeri `merge` ile korunur (istemci o an görsel taşımıyorsa üzerine yazılmaz). */
+  return out;
 }
 
 function fromFirestore(id: string, data: Record<string, unknown>): InventoryItem {

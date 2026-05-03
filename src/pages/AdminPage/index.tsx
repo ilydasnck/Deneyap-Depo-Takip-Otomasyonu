@@ -69,12 +69,15 @@ export default function AdminPage() {
     if (formMode === 'add') {
       addItem(payload);
     } else if (editing) {
+      /** `imageUrl` yoksa mevcut görseli koru — `undefined` spread ile silinmesin */
       updateItem(editing.id, {
         shelfId: payload.shelfId,
         productName: payload.productName,
         quantity: payload.quantity,
         category: payload.category,
-        imageUrl: payload.imageUrl,
+        ...(Object.prototype.hasOwnProperty.call(payload, 'imageUrl')
+          ? { imageUrl: payload.imageUrl }
+          : {}),
       });
     }
     setFormOpen(false);

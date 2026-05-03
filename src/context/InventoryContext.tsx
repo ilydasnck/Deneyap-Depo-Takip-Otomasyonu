@@ -9,14 +9,12 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { InventoryItem } from '@/types/inventory';
-import type { WarehouseJsonShelf } from '@/types/warehouseJson';
-import { getInventoryRepository } from '@/services/inventory';
 import {
-  enrichMissingImagesFromCatalog,
-  fetchWarehouseJson,
-  mergeWarehouseJsonIntoItems,
-  seedInventoryFromWarehouseJson,
-} from '@/services/inventory/seedFromJson';
+  getInventoryRepository,
+  useFirebaseInventory,
+} from '@/services/inventory';
+import { combineInventorySources } from '@/services/inventory/combineInventorySources';
+import { getLocalStorageInventoryRepository } from '@/services/inventory/localStorageInventoryRepository';
 
 type AddInput = {
   shelfId: number;
@@ -55,8 +53,7 @@ const InventoryContext = createContext<InventoryContextValue | null>(null);
 
 const SAVE_DEBOUNCE_MS = 500;
 const INITIAL_REMOTE_TIMEOUT_MS = 6000;
-const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Geçici olarak katalog verisi gösteriliyor.';
-const SAVE_TIMEOUT_MSG = 'Depo verisi kaydedilemedi. Ürünler yine de görüntüleniyor.';
+const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Geçici olarak yerel yedek kullanılıyor.';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -76,21 +73,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [warehouseShelves, setWarehouseShelves] = useState<
-    WarehouseJsonShelf[] | null
-  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const repo = useMemo(() => getInventoryRepository(), []);
+  const localBackupRepo = useMemo(
+    () => getLocalStorageInventoryRepository(),
+    [],
+  );
+  const firebaseMode = useFirebaseInventory();
   const itemsRef = useRef<InventoryItem[]>([]);
   itemsRef.current = items;
   const saveChainRef = useRef(Promise.resolve<void>(undefined));
 
-  const itemsForDisplay = useMemo(() => {
-    if (!warehouseShelves?.length) return items;
-    return enrichMissingImagesFromCatalog(items, warehouseShelves);
-  }, [items, warehouseShelves]);
+  /** Firebase kullanılırken yerel yedek de yazılır; yenilemeden önce uzak yazım tamamlanmasa bile kayıt korunur. */
+  const persistSnapshot = useCallback(
+    async (snapshot: InventoryItem[]) => {
+      await repo.saveItems(snapshot);
+      if (firebaseMode) await localBackupRepo.saveItems(snapshot);
+    },
+    [repo, localBackupRepo, firebaseMode],
+  );
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
 
@@ -99,7 +102,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     (snapshot: InventoryItem[]) => {
       saveChainRef.current = saveChainRef.current
         .catch(() => undefined)
-        .then(() => repo.saveItems(snapshot))
+        .then(() => persistSnapshot(snapshot))
         .then(() => setSyncError(null))
         .catch((e: unknown) =>
           setSyncError(
@@ -109,22 +112,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           ),
         );
     },
-    [repo],
+    [persistSnapshot],
   );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const json = await fetchWarehouseJson();
-        if (!cancelled) {
-          setWarehouseShelves(json);
-          const seeded = seedInventoryFromWarehouseJson(json);
-          setItems(seeded);
-          setLoading(false);
-        }
-
-        const saved = await withTimeout(
+        const rawRemote = await withTimeout(
           repo.loadItems(),
           INITIAL_REMOTE_TIMEOUT_MS,
           LOAD_TIMEOUT_MSG,
@@ -136,29 +131,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         if (cancelled) return;
 
-        const next =
-          saved !== null && saved.length > 0
-            ? mergeWarehouseJsonIntoItems(saved, json)
-            : seedInventoryFromWarehouseJson(json);
-        setItems(next);
+        const remoteItems = rawRemote === null ? [] : (rawRemote ?? []);
+        const localItems = (await localBackupRepo.loadItems()) ?? [];
+        const combined = combineInventorySources(remoteItems, localItems);
 
-        withTimeout(
-          repo.saveItems(next),
-          INITIAL_REMOTE_TIMEOUT_MS,
-          SAVE_TIMEOUT_MSG,
-        )
-          .then(() => {
-            if (!cancelled) setSyncError(null);
-          })
-          .catch((e: unknown) => {
-            if (
-              !cancelled &&
-              e instanceof Error &&
-              e.message !== SAVE_TIMEOUT_MSG
-            ) {
-              setSyncError(e.message);
-            }
-          });
+        if (!cancelled) {
+          setItems(combined);
+        }
       } catch (e) {
         if (!cancelled)
           setError(e instanceof Error ? e.message : 'Veri yüklenemedi');
@@ -169,7 +148,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [repo]);
+  }, [repo, localBackupRepo]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -233,8 +212,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           }
           if (typeof row.productName === 'string')
             row.productName = row.productName.trim();
-          if (row.imageUrl !== undefined)
-            row.imageUrl = row.imageUrl?.trim() || undefined;
+          if (row.imageUrl !== undefined) {
+            const trimmed = String(row.imageUrl).trim();
+            row.imageUrl = trimmed.length > 0 ? trimmed : '';
+          }
           if (typeof row.shelfId === 'number')
             row.shelfId = Math.min(84, Math.max(1, Math.floor(row.shelfId)));
           if (row.category !== undefined)
@@ -261,7 +242,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      items: itemsForDisplay,
+      items,
       loading,
       error,
       syncError,
@@ -271,7 +252,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       deleteItem,
     }),
     [
-      itemsForDisplay,
+      items,
       loading,
       error,
       syncError,
