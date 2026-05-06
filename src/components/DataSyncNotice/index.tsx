@@ -1,6 +1,6 @@
 import { AlertTriangle, CloudOff, X } from 'lucide-react';
 import { useInventory } from '@/context/InventoryContext';
-import { useFirebaseInventory } from '@/services/inventory';
+import { getInventoryRepositoryKind, useFirebaseInventory } from '@/services/inventory';
 
 function getFirebaseDebugInfo() {
   const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
@@ -24,7 +24,9 @@ function getFirebaseDebugInfo() {
 export default function DataSyncNotice() {
   const { syncError, clearSyncError } = useInventory();
   const firebase = useFirebaseInventory();
+  const storageKind = getInventoryRepositoryKind();
   const debug = getFirebaseDebugInfo();
+  const envRaw = String(import.meta.env.VITE_USE_FIREBASE ?? '').trim() || '(tanımsız)';
 
   if (syncError) {
     return (
@@ -41,7 +43,9 @@ export default function DataSyncNotice() {
             <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">VITE_*</code> değişkenlerini kontrol edin.
           </p>
           <p className="mt-2 text-xs opacity-90">
-            Debug: mode=<code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">{firebase ? 'firebase' : 'local'}</code>, projectId=
+            Debug: env <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">VITE_USE_FIREBASE</code> ={' '}
+            <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">{envRaw}</code>, repo=
+            <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">{storageKind}</code>, projectId=
             <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">{debug.projectId}</code>, eksik değişken=
             <code className="rounded bg-red-100 px-1 py-0.5 dark:bg-red-900/80">
               {debug.missingVars.length > 0 ? debug.missingVars.join(', ') : 'yok'}

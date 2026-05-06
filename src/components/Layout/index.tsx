@@ -36,6 +36,28 @@ export default function Layout({ children, variant = 'home', header }: Props) {
       <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl px-4 pb-16 pt-6 text-base leading-relaxed sm:px-6 md:text-lg lg:max-w-7xl xl:px-8 2xl:max-w-[min(100%,92rem)]">
         {children}
       </div>
+
+      <footer className="relative z-10 border-t border-zinc-200/80 px-4 py-6 text-center text-sm text-zinc-600 dark:border-slate-700/70 dark:text-slate-300 sm:px-6">
+        <p>© Copyright 2026. Tüm Hakları Saklıdır.</p>
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <a
+            href="https://github.com/ilydasnck"
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
+          >
+            github.com/ilydasnck
+          </a>
+          <a
+            href="https://github.com/ezgigozutok"
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
+          >
+            github.com/ezgigozutok
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

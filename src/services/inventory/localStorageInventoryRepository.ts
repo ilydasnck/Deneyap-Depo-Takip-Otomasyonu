@@ -6,12 +6,13 @@ export class LocalStorageInventoryRepository implements InventoryRepository {
   async loadItems(): Promise<InventoryItem[] | null> {
     try {
       const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
-      if (!raw) return null;
+      /** Boş depo `[]` olmalı; `null` dönmemeli — üst katman `null`ı yükleme hatası sanıyordu. */
+      if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return null;
+      if (!Array.isArray(parsed)) return [];
       return parsed as InventoryItem[];
     } catch {
-      return null;
+      return [];
     }
   }
 

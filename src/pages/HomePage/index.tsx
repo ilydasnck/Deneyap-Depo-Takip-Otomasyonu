@@ -21,7 +21,7 @@ import { matchesSearch } from '@/lib/stringSearch';
 import { loadRecentSearches, pushRecentSearch } from '@/services/inventory/recentSearches';
 import type { InventoryItem } from '@/types/inventory';
 
-const DEFAULT_CHIPS = ['Arduino', 'LED'];
+const DEFAULT_CHIPS = ['Makas', 'Bant', 'Kalem'];
 
 function groupByShelf(items: InventoryItem[]) {
   const map = new Map<number, InventoryItem[]>();

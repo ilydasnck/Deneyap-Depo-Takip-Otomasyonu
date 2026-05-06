@@ -76,10 +76,22 @@ export default function ProductFormModal({
 
   if (!open) return null;
 
+  const normalizeUrl = (raw: string): string => {
+    const t = raw.trim();
+    if (!t) return '';
+    if (/^www\./i.test(t)) return `https://${t}`;
+    return t;
+  };
+
+  const normalizedUrl = normalizeUrl(url);
+  const hasUrl = normalizedUrl.length > 0;
+  const urlIsValid = !hasUrl || /^https?:\/\//i.test(normalizedUrl);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const trimmedUrl = url.trim();
+    if (!urlIsValid) return;
+    const trimmedUrl = normalizedUrl;
     /** Düzenlemede boş alan = görseli kaldır (`''`); yeni kayıtta alan yok = Firestore’da dokunma */
     const imagePart =
       trimmedUrl.length > 0
@@ -176,14 +188,19 @@ export default function ProductFormModal({
               Kalıcı bir <strong className="font-medium">https://</strong> adresi kullanın (ör. Firebase Storage). Base64 yapıştırma
               Firestore’a tam yazılmaz; Drive/Dropbox gibi süreli paylaşım linkleri de bir süre sonra çalışmayı keser.
             </span>
+            {hasUrl && !urlIsValid ? (
+              <span className="mt-1 block text-xs text-red-600 dark:text-red-400">
+                Geçersiz URL. `http://` veya `https://` ile başlamalı (ör. `https://...`).
+              </span>
+            ) : null}
           </label>
-          {url.trim() ? (
+          {hasUrl ? (
             <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-slate-600">
               <p className="bg-zinc-50 px-2 py-1 text-sm text-zinc-500 dark:bg-slate-800 dark:text-slate-400">
                 Önizleme
               </p>
               <img
-                src={url}
+                src={normalizedUrl}
                 alt=""
                 loading="lazy"
                 decoding="async"

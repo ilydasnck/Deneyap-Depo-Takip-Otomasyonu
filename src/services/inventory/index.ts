@@ -1,2 +1,7 @@
 export type { InventoryRepository } from '@/services/inventory/repository';
-export { getInventoryRepository, useFirebaseInventory } from '@/services/inventory/repositoryFactory';
+export {
+  getInventoryRepository,
+  getInventoryRepositoryKind,
+  isFirebaseInventoryEnabled,
+  useFirebaseInventory,
+} from '@/services/inventory/repositoryFactory';

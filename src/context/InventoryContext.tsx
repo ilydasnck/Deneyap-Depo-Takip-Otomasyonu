@@ -9,12 +9,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { InventoryItem } from '@/types/inventory';
-import {
-  getInventoryRepository,
-  useFirebaseInventory,
-} from '@/services/inventory';
-import { combineInventorySources } from '@/services/inventory/combineInventorySources';
-import { getLocalStorageInventoryRepository } from '@/services/inventory/localStorageInventoryRepository';
+import { getInventoryRepository } from '@/services/inventory';
 
 type AddInput = {
   shelfId: number;
@@ -26,6 +21,7 @@ type AddInput = {
 
 type InventoryContextValue = {
   items: InventoryItem[];
+  /** İlk `loadItems` bitene kadar true */
   loading: boolean;
   error: string | null;
   /** Firestore/local kayıt başarısız olduğunda dolabilir */
@@ -51,9 +47,23 @@ type InventoryContextValue = {
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
-const SAVE_DEBOUNCE_MS = 500;
-const INITIAL_REMOTE_TIMEOUT_MS = 6000;
-const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Geçici olarak yerel yedek kullanılıyor.';
+const INITIAL_REMOTE_TIMEOUT_MS = 30000;
+const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Ağ veya Firebase yapılandırmasını kontrol edin.';
+const SAVE_DEBOUNCE_MS = 700;
+const CACHE_KEY = 'inventory_cache_v1';
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
+function formatPersistenceError(e: unknown): string {
+  if (e instanceof Error) {
+    const code = (e as { code?: string }).code;
+    const head = code ? `${code}: ${e.message}` : e.message;
+    if (code === 'permission-denied') {
+      return `${head} — Firebase Console’da Firestore → Kurallar (Rules): inventory_items için okuma/yazma açık kuralları yapıştırıp «Yayınla» (Publish) edin; veya proje klasöründe «firebase deploy --only firestore:rules» çalıştırın.`;
+    }
+    return head;
+  }
+  return 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.';
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -71,28 +81,67 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+async function loadWithRetry<T>(
+  fn: () => Promise<T>,
+  retries: number,
+  timeoutMs: number,
+  timeoutMsg: string,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= retries; i += 1) {
+    try {
+      return await withTimeout(fn(), timeoutMs, timeoutMsg);
+    } catch (e) {
+      lastErr = e;
+      if (i < retries) await new Promise((r) => setTimeout(r, 1200));
+    }
+  }
+  throw lastErr;
+}
+
+function readCache(): InventoryItem[] | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts?: number; items?: InventoryItem[] };
+    if (!Array.isArray(parsed.items) || typeof parsed.ts !== 'number') return null;
+    if (Date.now() - parsed.ts > CACHE_TTL_MS) return null;
+    return parsed.items;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(items: InventoryItem[]): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items }));
+  } catch {
+    // cache best-effort
+  }
+}
+
 export function InventoryProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<InventoryItem[]>(() => readCache() ?? []);
+  const [loading, setLoading] = useState(() => readCache() === null);
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const repo = useMemo(() => getInventoryRepository(), []);
-  const localBackupRepo = useMemo(
-    () => getLocalStorageInventoryRepository(),
-    [],
-  );
-  const firebaseMode = useFirebaseInventory();
+  /**
+   * Yalnızca `loadItems` başarıyla bittiğinde true. Zaman aşımı / ağ hatasında false kalır;
+   * bu durumda kayıt yapılmaz (aksi halde kısmi bellek listesiyle tüm Firestore silinebilirdi).
+   */
+  const persistOkRef = useRef(false);
+  /** Her render’da güncel repo; `useMemo([], [])` eski LocalStorage referansını tutup .env sonrası Firestore’a geçmeyi engelleyebilir. */
+  const repo = getInventoryRepository();
   const itemsRef = useRef<InventoryItem[]>([]);
   itemsRef.current = items;
   const saveChainRef = useRef(Promise.resolve<void>(undefined));
+  const saveTimerRef = useRef<number | null>(null);
 
-  /** Firebase kullanılırken yerel yedek de yazılır; yenilemeden önce uzak yazım tamamlanmasa bile kayıt korunur. */
   const persistSnapshot = useCallback(
     async (snapshot: InventoryItem[]) => {
       await repo.saveItems(snapshot);
-      if (firebaseMode) await localBackupRepo.saveItems(snapshot);
     },
-    [repo, localBackupRepo, firebaseMode],
+    [repo],
   );
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
@@ -104,68 +153,90 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         .catch(() => undefined)
         .then(() => persistSnapshot(snapshot))
         .then(() => setSyncError(null))
-        .catch((e: unknown) =>
-          setSyncError(
-            e instanceof Error
-              ? e.message
-              : 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.',
-          ),
-        );
+        .catch((e: unknown) => setSyncError(formatPersistenceError(e)));
     },
     [persistSnapshot],
   );
 
+  const scheduleSave = useCallback(
+    (snapshot: InventoryItem[]) => {
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = null;
+        enqueueSave(snapshot);
+      }, SAVE_DEBOUNCE_MS);
+    },
+    [enqueueSave],
+  );
+
   useEffect(() => {
     let cancelled = false;
+    persistOkRef.current = false;
     (async () => {
       try {
-        const rawRemote = await withTimeout(
-          repo.loadItems(),
+        const cache = readCache();
+        if (cache && !cancelled) {
+          setItems(cache);
+          setLoading(false);
+          // Cache hızlı açılış için; asıl kaynak yine Firestore.
+          // Bu yüzden erken dönmeyip arka planda uzak veriyi de çekiyoruz.
+        }
+
+        const raw = await loadWithRetry(
+          () => repo.loadItems(),
+          1,
           INITIAL_REMOTE_TIMEOUT_MS,
           LOAD_TIMEOUT_MSG,
         ).catch((e: unknown) => {
-          if (!cancelled && e instanceof Error && e.message !== LOAD_TIMEOUT_MSG) {
-            setSyncError(e.message);
-          }
+          if (!cancelled) setSyncError(formatPersistenceError(e));
           return null;
         });
         if (cancelled) return;
 
-        const remoteItems = rawRemote === null ? [] : (rawRemote ?? []);
-        const localItems = (await localBackupRepo.loadItems()) ?? [];
-        const combined = combineInventorySources(remoteItems, localItems);
+        const loadFailed = raw === null;
+        const list = raw ?? [];
 
-        if (!cancelled) {
-          setItems(combined);
-        }
+        if (!cancelled && !loadFailed) setItems(list);
       } catch (e) {
         if (!cancelled)
           setError(e instanceof Error ? e.message : 'Veri yüklenemedi');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          /** İlk okuma hatalı olsa da sonradan yapılan düzenlemeler Firestore'a yazılabilsin. */
+          persistOkRef.current = true;
+          setLoading(false);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [repo, localBackupRepo]);
+  }, [repo]);
 
   useEffect(() => {
-    if (loading || error) return;
-    const t = window.setTimeout(() => {
-      enqueueSave(itemsRef.current);
-    }, SAVE_DEBOUNCE_MS);
-    return () => window.clearTimeout(t);
-  }, [items, loading, error, enqueueSave]);
+    writeCache(items);
+  }, [items]);
 
   useEffect(() => {
     if (loading || error) return;
     const flush = () => {
-      if (document.visibilityState === 'hidden') enqueueSave(itemsRef.current);
+      if (document.visibilityState !== 'hidden') return;
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      queueMicrotask(() => enqueueSave(itemsRef.current));
     };
     document.addEventListener('visibilitychange', flush);
     return () => document.removeEventListener('visibilitychange', flush);
   }, [loading, error, enqueueSave]);
+
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+    },
+    [],
+  );
 
   const addItem = useCallback((input: AddInput) => {
     const id = crypto.randomUUID();
@@ -182,10 +253,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           imageUrl: input.imageUrl?.trim() || undefined,
         },
       ];
-      enqueueSave(next);
+      queueMicrotask(() => scheduleSave(next));
       return next;
     });
-  }, [enqueueSave]);
+  }, [scheduleSave]);
 
   const updateItem = useCallback(
     (
@@ -222,22 +293,22 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             row.category = row.category?.trim() || undefined;
           return row;
         });
-        enqueueSave(next);
+        queueMicrotask(() => scheduleSave(next));
         return next;
       });
     },
-    [enqueueSave],
+    [scheduleSave],
   );
 
   const deleteItem = useCallback(
     (id: string) => {
       setItems((prev) => {
         const next = prev.filter((it) => it.id !== id);
-        enqueueSave(next);
+        queueMicrotask(() => scheduleSave(next));
         return next;
       });
     },
-    [enqueueSave],
+    [scheduleSave],
   );
 
   const value = useMemo(
