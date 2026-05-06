@@ -1,3 +1,4 @@
+import { Github } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 type Props = {
@@ -12,8 +13,8 @@ export default function Layout({ children, variant = 'home', header }: Props) {
     <div
       className={
         variant === 'home'
-          ? 'relative min-h-screen overflow-x-clip bg-white text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
-          : 'relative min-h-screen overflow-x-clip bg-zinc-50 text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
+          ? 'relative flex min-h-dvh flex-col overflow-x-clip bg-white text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
+          : 'relative flex min-h-dvh flex-col overflow-x-clip bg-zinc-50 text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
       }
     >
       {variant === 'home' ? (
@@ -33,28 +34,30 @@ export default function Layout({ children, variant = 'home', header }: Props) {
         <div className="relative z-10 w-full min-w-0">{header}</div>
       ) : null}
 
-      <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl px-4 pb-16 pt-6 text-base leading-relaxed sm:px-6 md:text-lg lg:max-w-7xl xl:px-8 2xl:max-w-[min(100%,92rem)]">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-8 pt-6 text-base leading-relaxed sm:px-6 md:text-lg lg:max-w-7xl xl:px-8 2xl:max-w-[min(100%,92rem)]">
         {children}
       </div>
 
-      <footer className="relative z-10 border-t border-zinc-200/80 px-4 py-6 text-center text-sm text-zinc-600 dark:border-slate-700/70 dark:text-slate-300 sm:px-6">
+      <footer className="relative z-10 border-t border-zinc-200/80 px-4 py-3 text-center text-sm text-zinc-600 dark:border-slate-700/70 dark:text-slate-300 sm:px-6">
         <p>© Copyright 2026. Tüm Hakları Saklıdır.</p>
-        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <p className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <a
             href="https://github.com/ilydasnck"
             target="_blank"
             rel="noreferrer"
-            className="underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
+            className="inline-flex items-center gap-1.5 underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
           >
-            github.com/ilydasnck
+            <Github className="h-4 w-4" aria-hidden />
+            İlayda ŞENOCAK
           </a>
           <a
             href="https://github.com/ezgigozutok"
             target="_blank"
             rel="noreferrer"
-            className="underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
+            className="inline-flex items-center gap-1.5 underline decoration-zinc-400/70 underline-offset-4 hover:text-zinc-900 dark:hover:text-white"
           >
-            github.com/ezgigozutok
+            <Github className="h-4 w-4" aria-hidden />
+            Ezgi GÖZÜTOK
           </a>
         </p>
       </footer>

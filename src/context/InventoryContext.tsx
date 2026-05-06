@@ -6,10 +6,10 @@ import {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import type { ReactNode } from 'react';
-import type { InventoryItem } from '@/types/inventory';
-import { getInventoryRepository } from '@/services/inventory';
+} from "react";
+import type { ReactNode } from "react";
+import type { InventoryItem } from "@/types/inventory";
+import { getInventoryRepository } from "@/services/inventory";
 
 type AddInput = {
   shelfId: number;
@@ -33,12 +33,12 @@ type InventoryContextValue = {
     patch: Partial<
       Pick<
         InventoryItem,
-        | 'productName'
-        | 'quantity'
-        | 'imageUrl'
-        | 'shelfId'
-        | 'quantityRecorded'
-        | 'category'
+        | "productName"
+        | "quantity"
+        | "imageUrl"
+        | "shelfId"
+        | "quantityRecorded"
+        | "category"
       >
     >,
   ) => void;
@@ -48,24 +48,29 @@ type InventoryContextValue = {
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
 const INITIAL_REMOTE_TIMEOUT_MS = 30000;
-const LOAD_TIMEOUT_MSG = 'Depo verisi yanıt vermiyor. Ağ veya Firebase yapılandırmasını kontrol edin.';
+const LOAD_TIMEOUT_MSG =
+  "Depo verisi yanıt vermiyor. Ağ veya Firebase yapılandırmasını kontrol edin.";
 const SAVE_DEBOUNCE_MS = 700;
-const CACHE_KEY = 'inventory_cache_v1';
+const CACHE_KEY = "inventory_cache_v1";
 const CACHE_TTL_MS = 2 * 60 * 1000;
 
 function formatPersistenceError(e: unknown): string {
   if (e instanceof Error) {
     const code = (e as { code?: string }).code;
     const head = code ? `${code}: ${e.message}` : e.message;
-    if (code === 'permission-denied') {
+    if (code === "permission-denied") {
       return `${head} — Firebase Console’da Firestore → Kurallar (Rules): inventory_items için okuma/yazma açık kuralları yapıştırıp «Yayınla» (Publish) edin; veya proje klasöründe «firebase deploy --only firestore:rules» çalıştırın.`;
     }
     return head;
   }
-  return 'Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.';
+  return "Veriler kaydedilemedi. Ağ veya sunucu izinlerini kontrol edin.";
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error(message)), ms);
     promise.then(
@@ -104,7 +109,8 @@ function readCache(): InventoryItem[] | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { ts?: number; items?: InventoryItem[] };
-    if (!Array.isArray(parsed.items) || typeof parsed.ts !== 'number') return null;
+    if (!Array.isArray(parsed.items) || typeof parsed.ts !== "number")
+      return null;
     if (Date.now() - parsed.ts > CACHE_TTL_MS) return null;
     return parsed.items;
   } catch {
@@ -160,7 +166,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
   const scheduleSave = useCallback(
     (snapshot: InventoryItem[]) => {
-      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+      if (saveTimerRef.current !== null)
+        window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(() => {
         saveTimerRef.current = null;
         enqueueSave(snapshot);
@@ -199,7 +206,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!cancelled && !loadFailed) setItems(list);
       } catch (e) {
         if (!cancelled)
-          setError(e instanceof Error ? e.message : 'Veri yüklenemedi');
+          setError(e instanceof Error ? e.message : "Veri yüklenemedi");
       } finally {
         if (!cancelled) {
           /** İlk okuma hatalı olsa da sonradan yapılan düzenlemeler Firestore'a yazılabilsin. */
@@ -220,43 +227,47 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || error) return;
     const flush = () => {
-      if (document.visibilityState !== 'hidden') return;
+      if (document.visibilityState !== "hidden") return;
       if (saveTimerRef.current !== null) {
         window.clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
       queueMicrotask(() => enqueueSave(itemsRef.current));
     };
-    document.addEventListener('visibilitychange', flush);
-    return () => document.removeEventListener('visibilitychange', flush);
+    document.addEventListener("visibilitychange", flush);
+    return () => document.removeEventListener("visibilitychange", flush);
   }, [loading, error, enqueueSave]);
 
   useEffect(
     () => () => {
-      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+      if (saveTimerRef.current !== null)
+        window.clearTimeout(saveTimerRef.current);
     },
     [],
   );
 
-  const addItem = useCallback((input: AddInput) => {
-    const id = crypto.randomUUID();
-    setItems((prev) => {
-      const next = [
-        ...prev,
-        {
-          id,
-          shelfId: input.shelfId,
-          productName: input.productName.trim(),
-          quantity: Math.max(0, Math.floor(input.quantity)),
-          quantityRecorded: true,
-          category: input.category?.trim() || undefined,
-          imageUrl: input.imageUrl?.trim() || undefined,
-        },
-      ];
-      queueMicrotask(() => scheduleSave(next));
-      return next;
-    });
-  }, [scheduleSave]);
+  const addItem = useCallback(
+    (input: AddInput) => {
+      const id = crypto.randomUUID();
+      setItems((prev) => {
+        const next = [
+          ...prev,
+          {
+            id,
+            shelfId: input.shelfId,
+            productName: input.productName.trim(),
+            quantity: Math.max(0, Math.floor(input.quantity)),
+            quantityRecorded: true,
+            category: input.category?.trim() || undefined,
+            imageUrl: input.imageUrl?.trim() || undefined,
+          },
+        ];
+        queueMicrotask(() => scheduleSave(next));
+        return next;
+      });
+    },
+    [scheduleSave],
+  );
 
   const updateItem = useCallback(
     (
@@ -264,12 +275,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       patch: Partial<
         Pick<
           InventoryItem,
-          | 'productName'
-          | 'quantity'
-          | 'imageUrl'
-          | 'shelfId'
-          | 'quantityRecorded'
-          | 'category'
+          | "productName"
+          | "quantity"
+          | "imageUrl"
+          | "shelfId"
+          | "quantityRecorded"
+          | "category"
         >
       >,
     ) => {
@@ -277,17 +288,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const next = prev.map((it) => {
           if (it.id !== id) return it;
           const row = { ...it, ...patch };
-          if (typeof row.quantity === 'number') {
+          if (typeof row.quantity === "number") {
             row.quantity = Math.max(0, Math.floor(row.quantity));
             row.quantityRecorded = true;
           }
-          if (typeof row.productName === 'string')
+          if (typeof row.productName === "string")
             row.productName = row.productName.trim();
           if (row.imageUrl !== undefined) {
             const trimmed = String(row.imageUrl).trim();
-            row.imageUrl = trimmed.length > 0 ? trimmed : '';
+            row.imageUrl = trimmed.length > 0 ? trimmed : "";
           }
-          if (typeof row.shelfId === 'number')
+          if (typeof row.shelfId === "number")
             row.shelfId = Math.min(84, Math.max(1, Math.floor(row.shelfId)));
           if (row.category !== undefined)
             row.category = row.category?.trim() || undefined;
@@ -335,12 +346,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>
+    <InventoryContext.Provider value={value}>
+      {children}
+    </InventoryContext.Provider>
   );
 }
 
 export function useInventory(): InventoryContextValue {
   const ctx = useContext(InventoryContext);
-  if (!ctx) throw new Error('useInventory InventoryProvider dışında kullanılamaz');
+  if (!ctx)
+    throw new Error("useInventory InventoryProvider dışında kullanılamaz");
   return ctx;
 }

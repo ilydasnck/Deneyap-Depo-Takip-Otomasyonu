@@ -184,10 +184,6 @@ export default function ProductFormModal({
               placeholder="https://... (kısa adres tüm cihazlarda senkron olur)"
               className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-base dark:border-slate-600 dark:bg-slate-800"
             />
-            <span className="mt-1 block text-xs text-zinc-500 dark:text-slate-500">
-              Kalıcı bir <strong className="font-medium">https://</strong> adresi kullanın (ör. Firebase Storage). Base64 yapıştırma
-              Firestore’a tam yazılmaz; Drive/Dropbox gibi süreli paylaşım linkleri de bir süre sonra çalışmayı keser.
-            </span>
             {hasUrl && !urlIsValid ? (
               <span className="mt-1 block text-xs text-red-600 dark:text-red-400">
                 Geçersiz URL. `http://` veya `https://` ile başlamalı (ör. `https://...`).

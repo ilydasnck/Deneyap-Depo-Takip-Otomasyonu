@@ -37,6 +37,7 @@ export default function HomePage() {
   const { items, loading, error } = useInventory();
   const [search, setSearch] = useState('');
   const [allOpen, setAllOpen] = useState(false);
+  const [showAllShelves, setShowAllShelves] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [expandedShelves, setExpandedShelves] = useState<Set<number>>(() => new Set());
   const [recent, setRecent] = useState<string[]>(() => loadRecentSearches());
@@ -58,6 +59,10 @@ export default function HomePage() {
   }, [items, search, categoryFilter]);
 
   const grouped = useMemo(() => groupByShelf(filtered), [filtered]);
+  const visibleGrouped = useMemo(
+    () => (showAllShelves ? grouped : grouped.slice(0, 5)),
+    [grouped, showAllShelves],
+  );
 
   const searchSorted = useMemo(() => {
     if (!search.trim()) return [];
@@ -248,7 +253,7 @@ export default function HomePage() {
             ))}
           </ul>
         ) : (
-          grouped.map(([shelfId, list]) => (
+          visibleGrouped.map(([shelfId, list]) => (
             <article
               key={shelfId}
               className="rounded-2xl border border-zinc-200/80 bg-white/80 p-4 shadow-md backdrop-blur-md dark:border-slate-600 dark:bg-slate-900/60 sm:p-5"
@@ -320,6 +325,18 @@ export default function HomePage() {
           ))
         )}
       </section>
+
+      {!search.trim() && grouped.length > 5 && !showAllShelves ? (
+        <div className="mx-auto mt-4 w-full max-w-none text-center">
+          <button
+            type="button"
+            onClick={() => setShowAllShelves(true)}
+            className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            Tüm rafları görüntüle
+          </button>
+        </div>
+      ) : null}
 
       {!search.trim() ? (
         <p className="mx-auto mt-10 w-full max-w-none text-center text-base text-zinc-500 dark:text-slate-400 md:text-lg">
