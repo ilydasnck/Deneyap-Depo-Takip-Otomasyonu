@@ -2,13 +2,13 @@
 
 React + Vite + Firebase Firestore tabanlı depo takip uygulaması.
 
-## Ozellikler
+## Özellikler
 
-- Raf bazli urun listeleme ve arama
-- Admin panelinden urun ekleme, guncelleme, silme
-- Firestore ile cihazlar arasi ortak veri senkronu
-- Firestore devre disiyken localStorage fallback
-- Koyu/acik tema destegi
+- Raf bazlı ürün listeleme ve arama
+- Admin panelinden ürün ekleme, güncelleme, silme
+- Firestore ile cihazlar arası ortak veri senkronu
+- Firestore devre dışıyken localStorage fallback
+- Koyu/açık tema desteği
 
 ## Teknolojiler
 
@@ -33,7 +33,7 @@ npm install
 
 ### 3) Ortam Degiskenleri
 
-`.env.example` dosyasini kopyalayip `.env` olusturun:
+`.env.example` dosyasını kopyalayıp `.env` oluşturun:
 
 ```bash
 cp .env.example .env
@@ -45,14 +45,14 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-`.env` icindeki temel alanlar:
+`.env` içindeki temel alanlar:
 
 - `VITE_USE_FIREBASE=true` -> Firestore aktif
 - `VITE_USE_FIREBASE=false` -> localStorage modu
-- `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID` vb. -> Firebase ayarlari
-- `VITE_ADMIN_PASSWORD` -> istemci tarafinda kontrol edilir (guvenli gizli saklama icin server-side dogrulama onerilir)
+- `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID` vb. -> Firebase ayarları
+- `VITE_ADMIN_PASSWORD` -> istemci tarafında kontrol edilir (guvünli gizli saklama için server-side doğrulama önerilir)
 
-### 4) Gelistirme
+### 4) Geliştirme
 
 ```bash
 npm run dev
@@ -64,19 +64,19 @@ npm run dev
 npm run build
 ```
 
-### 6) Build Onizleme
+### 6) Build Önizleme
 
 ```bash
 npm run preview
 ```
 
-## Firebase Notlari
+## Firebase Notları
 
 - Firestore koleksiyonu: `inventory_items`
-- Canli ortamda `.env` degisikligi sonrasi yeniden deploy gereklidir.
-- Firestore kurallari dogru ayarlanmadiginda okuma/yazma hatalari alinabilir.
+- Canlı ortamda `.env` degisikligi sonrasi yeniden deploy gereklidir.
+- Firestore kuralları doğru ayarlanmadığında okuma/yazma hataları alınabilir.
 
-## Proje Yapisı (Ozet)
+## Proje Yapisı (Özet)
 
 ```text
 src/
@@ -90,5 +90,5 @@ src/
 
 ## Lisans
 
-Bu proje ticari kullanimi kisitlayan bir lisansla yayinlanmistir.
-Detaylar icin `LICENSE` dosyasina bakin.
+Bu proje ticari kullanımı kısıtlayan bir lisansla yayınlanmıştır.
+Detaylar için `LICENSE` dosyasına bakın.
