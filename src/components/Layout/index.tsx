@@ -13,8 +13,8 @@ export default function Layout({ children, variant = 'home', header }: Props) {
     <div
       className={
         variant === 'home'
-          ? 'relative flex min-h-dvh flex-col overflow-x-clip bg-white text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
-          : 'relative flex min-h-dvh flex-col overflow-x-clip bg-zinc-50 text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
+          ? 'relative flex min-h-dvh flex-col overflow-hidden bg-white text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
+          : 'relative flex min-h-dvh flex-col overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-gradient-to-br dark:from-[#0D1B2A] dark:to-[#1B263B] dark:text-slate-100'
       }
     >
       {variant === 'home' ? (
